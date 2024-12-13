@@ -1,0 +1,14 @@
+*** Using Compiler 'V6.19', folder: 'D:\keil538a\ARM\ARMCLANG\Bin'
+Build target 'SimpleTest_STM32F103C8T6'
+../../../Stream.cpp(472): error: cannot assign to non-static data member within const member function 'readFromRxBuffer'
+        errorCode = 1; // "Error: Data size exceeds RX buffer size."
+        ~~~~~~~~~ ^
+../../../Stream.cpp(468): note: member function 'Stream::readFromRxBuffer' is declared const here
+bool Stream::readFromRxBuffer(char* dest, size_t dataSize) const 
+~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1 error generated.
+compiling Stream.cpp...
+compiling main.cpp...
+"SimpleTest_STM32F103C8T6\SimpleTest_STM32F103C8T6.axf" - 1 Error(s), 0 Warning(s).
+Target not created.
+Build Time Elapsed:  00:00:01

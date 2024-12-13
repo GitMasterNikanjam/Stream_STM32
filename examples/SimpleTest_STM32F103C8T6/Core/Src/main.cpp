@@ -18,10 +18,11 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-
+#include <string>
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "Stream.h"
+using namespace Stream_utility;
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -42,7 +43,10 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-
+char message[100];
+char str[100];
+size_t T;
+Stream stream;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -91,10 +95,19 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  strcpy(message, "hello");
+  stream.writeTxBuffer(message, 2);
+  std::string s;
+  s.assign("mohammad;");
+  stream.pushBackTxBuffer(s.c_str());
+  strcpy(str, stream.getTxBuffer());
   while (1)
   {
-    /* USER CODE END WHILE */
+    
+    T = stream.availableTx();
 
+    /* USER CODE END WHILE */
+		
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
