@@ -96,11 +96,10 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   strcpy(message, "hello");
-  stream.writeTxBuffer(message, 2);
+  stream.writeTxBuffer(message, strlen(message));
   std::string s;
-  s.assign("mohammad;");
-  stream.pushBackTxBuffer(s.c_str());
-  strcpy(str, stream.getTxBuffer());
+  stream.popFrontTxBuffer(&s, 2);
+  strcpy(str, s.c_str());
   while (1)
   {
     

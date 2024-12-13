@@ -293,19 +293,59 @@ public:
     bool pushBackRxBuffer(const std::string* data);
 
     /**
-     * @brief Pop front certain number elements from RX buffer and remove them.
-     * @return string that pop front.
+     * @brief Pop front certain number elements from TX buffer and remove them.
+     * @param data is the string that poped front.
+     * @return true if succeeded.
      *  */
-    bool popFrontRxBuffer(std::string* data, size_t size);
+    bool popFrontTxBuffer(std::string* data, size_t dataSize = 1);
 
-    bool popFrontRxBuffer(char* data, size_t size);
+    /**
+     * @brief Pop front certain number elements from TX buffer and remove them.
+     * @param data is the string that poped front.
+     * @return true if succeeded.
+     *  */
+    bool popFrontTxBuffer(char* data, size_t dataSize = 1);
+
+    /**
+     * @brief Pop front certain number elements from RX buffer and remove them.
+     * @param data is the string that poped front.
+     * @return true if succeeded.
+     *  */
+    bool popFrontRxBuffer(std::string* data, size_t dataSize = 1);
+
+    /**
+     * @brief Pop front certain number elements from RX buffer and remove them.
+     * @param data is the string that poped front.
+     * @return true if succeeded.
+     *  */
+    bool popFrontRxBuffer(char* data, size_t dataSize = 1);
+
+    /**
+     * @brief Pop front all elements from TX buffer and remove them.
+     * @param data is the string that poped front.
+     * @return true if succeeded.
+     *  */
+    bool popAllTxBuffer(std::string* data);
+
+    /**
+     * @brief Pop front all elements from TX buffer and remove them.
+     * @param data is the string that poped front.
+     * @return true if succeeded.
+     *  */
+    bool popAllTxBuffer(char* data);
 
     /**
      * @brief Pop front all elements from RX buffer and remove them.
-     * @return string that pop front.
+     * @param data is the string that poped front.
+     * @return true if succeeded.
      *  */
     bool popAllRxBuffer(std::string* data);
 
+    /**
+     * @brief Pop front all elements from RX buffer and remove them.
+     * @param data is the string that poped front.
+     * @return true if succeeded.
+     *  */
     bool popAllRxBuffer(char* data);
 
     /**

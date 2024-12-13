@@ -542,6 +542,128 @@ bool Stream::pushBackRxBuffer(const std::string* data)
     return pushBackRxBuffer(data->c_str(), data->size());
 }
 
+bool Stream::popFrontTxBuffer(char* data, size_t dataSize)
+{
+    if(data == nullptr)
+    {
+        return false;
+    }
+
+    if (dataSize > _txPosition) 
+    {
+        // Not enough data in the buffer to pop
+        return false;
+    }
+
+    // Copy the data to the output buffer
+    std::memcpy(data, _txBuffer, dataSize);
+
+    // Shift the remaining data in the TX buffer
+    std::memmove(_txBuffer, _txBuffer + dataSize, _txPosition - dataSize);
+
+    // Update the TX buffer position
+    _txPosition -= dataSize;
+
+    // Null-terminate the remaining buffer (optional for string usage)
+    _txBuffer[_txPosition] = '\0';
+
+    return true;
+}
+
+bool Stream::popFrontTxBuffer(std::string* data, size_t dataSize)
+{
+    if (dataSize > _txPosition) 
+    {
+    // Not enough data in the buffer to pop
+    return false;
+    }
+
+    // Assign the requested portion of data to the std::string
+    *data = std::string(_txBuffer, dataSize);
+
+    // Shift the remaining data in the TX buffer
+    std::memmove(_txBuffer, _txBuffer + dataSize, _txPosition - dataSize);
+
+    // Update the TX buffer position
+    _txPosition -= dataSize;
+
+    // Null-terminate the remaining buffer (optional for safety if treated as a string)
+    _txBuffer[_txPosition] = '\0';
+
+    return true;
+}
+
+bool Stream::popAllTxBuffer(char* data)
+{
+    return popFrontTxBuffer(data, _txPosition);
+}
+
+bool Stream::popAllTxBuffer(std::string* data)
+{
+    return popFrontTxBuffer(data, _txPosition);
+}
+
+bool Stream::popFrontRxBuffer(char* data, size_t dataSize)
+{
+    if(data == nullptr)
+    {
+        return false;
+    }
+
+    if (dataSize > _rxPosition) 
+    {
+        // Not enough data in the buffer to pop
+        return false;
+    }
+
+    // Copy the data to the output buffer
+    std::memcpy(data, _rxBuffer, dataSize);
+
+    // Shift the remaining data in the TX buffer
+    std::memmove(_rxBuffer, _rxBuffer + dataSize, _rxPosition - dataSize);
+
+    // Update the TX buffer position
+    _rxPosition -= dataSize;
+
+    // Null-terminate the remaining buffer (optional for string usage)
+    _rxBuffer[_rxPosition] = '\0';
+
+    return true;
+}
+
+bool Stream::popFrontRxBuffer(std::string* data, size_t dataSize)
+{
+    if (dataSize > _rxPosition) 
+    {
+    // Not enough data in the buffer to pop
+    return false;
+    }
+
+    // Assign the requested portion of data to the std::string
+    *data = std::string(_rxBuffer, dataSize);
+
+    // Shift the remaining data in the TX buffer
+    std::memmove(_rxBuffer, _rxBuffer + dataSize, _rxPosition - dataSize);
+
+    // Update the TX buffer position
+    _rxPosition -= dataSize;
+
+    // Null-terminate the remaining buffer (optional for safety if treated as a string)
+    _rxBuffer[_rxPosition] = '\0';
+
+    return true;
+}
+
+bool Stream::popAllRxBuffer(char* data)
+{
+    return popFrontRxBuffer(data, _rxPosition);
+}
+
+bool Stream::popAllRxBuffer(std::string* data)
+{
+    return popFrontRxBuffer(data, _rxPosition);
+}
+
 size_t Stream::availableTx() 
 {
     return strlen(_txBuffer);
