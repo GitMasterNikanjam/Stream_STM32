@@ -306,6 +306,8 @@ public:
      *  */
     bool popFrontTxBuffer(char* data, size_t dataSize = 1);
 
+    bool removeFrontTxBuffer(size_t dataSize = 1);
+
     /**
      * @brief Pop front certain number elements from RX buffer and remove them.
      * @param data is the string that poped front.

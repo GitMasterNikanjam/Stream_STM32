@@ -570,6 +570,26 @@ bool Stream::popFrontTxBuffer(char* data, size_t dataSize)
     return true;
 }
 
+bool Stream::removeFrontTxBuffer(size_t dataSize)
+{
+    if (dataSize > _txPosition) 
+    {
+        // Not enough data in the buffer to pop
+        return false;
+    }
+
+    // Shift the remaining data in the TX buffer
+    std::memmove(_txBuffer, _txBuffer + dataSize, _txPosition - dataSize);
+
+    // Update the TX buffer position
+    _txPosition -= dataSize;
+
+    // Null-terminate the remaining buffer (optional for string usage)
+    _txBuffer[_txPosition] = '\0';
+
+    return true;
+}
+
 bool Stream::popFrontTxBuffer(std::string* data, size_t dataSize)
 {
     if (dataSize > _txPosition) 
