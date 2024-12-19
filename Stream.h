@@ -187,6 +187,7 @@ bool stringToDouble(const char* str, double* num);
 /**
  * @class Stream
  * @brief This class can be used as an object for data receive and transmit flow management.
+ * @note - Default TxSize and RxSize is 256 byte.
  */
 class Stream
 {
@@ -249,16 +250,32 @@ public:
     void clearRxBuffer();
 
     /**
-     * @brief Write data Tx buffer.
-     * @note Clear any previouse data on Tx buffer.
+     * @brief Remove front certain number elements from TX buffer and remove them.
      * @return true if succeeded.
+     * @note - Error code be 1 if: "Not enough data in the buffer to remove"
+     *  */
+    bool removeFrontTxBuffer(size_t dataSize = 1);
+
+    /**
+     * @brief Remove front certain number elements from RX buffer and remove them.
+     * @return true if succeeded.
+     * @note - Error code be 1 if: "Not enough data in the buffer to remove"
+     *  */
+    bool removeFrontRxBuffer(size_t dataSize = 1);
+
+    /**
+     * @brief Write data Tx buffer.
+     * @note - Clear any previouse data on Tx buffer.
+     * @return true if succeeded.
+     * @note - Error code be 1 if: "Error Stream: Data size exceeds TX buffer size."
      */
     bool writeTxBuffer(const char* data, size_t dataSize);
 
     /**
      * @brief Write data Rx buffer.
-     * @note Clear any previouse data on Rx buffer.
+     * @note - Clear any previouse data on Rx buffer.
      * @return true if succeeded.
+     * @note - Error code be 1 if: "Error Stream: Data size exceeds RX buffer size."
      */
     bool writeRxBuffer(const char* data, size_t dataSize);
 
@@ -267,6 +284,8 @@ public:
      * @param data is a char array pointer that you want to push back.
      * @param dataSize is the data length for push back.
      * @return true if succeeded.
+     * @note - Error code be 1 if: "Error Stream: data can not be null."
+     * @note - Error code be 2 if: "Error Stream: TX Buffer Overflow"
      */
     bool pushBackTxBuffer(const char* data, size_t dataSize = 1);
 
@@ -274,6 +293,8 @@ public:
      * @brief Push back certain number charecter in to TxBuffer.
      * @param data is a string pointer that you want to push back.
      * @return true if succeeded.
+     * @note - Error code be 1 if: "Error Stream: data can not be null."
+     * @note - Error code be 2 if: "Error Stream: TX Buffer Overflow"
      */
     bool pushBackTxBuffer(const std::string* data);
 
@@ -282,6 +303,8 @@ public:
      * @param data is a char array pointer that you want to push back.
      * @param dataSize is the data length for push back.
      * @return true if succeeded.
+     * @note - Error code be 1 if: "Error Stream: data can not be null."
+     * @note - Error code be 2 if: "Error Stream: RX Buffer Overflow"
      */
     bool pushBackRxBuffer(const char* data, size_t dataSize = 1);
 
@@ -289,6 +312,8 @@ public:
      * @brief Push back certain number charecter in to RxBuffer.
      * @param data is a string pointer that you want to push back.
      * @return true if succeeded.
+     * @note - Error code be 1 if: "Error Stream: data can not be null."
+     * @note - Error code be 2 if: "Error Stream: RX Buffer Overflow"
      */
     bool pushBackRxBuffer(const std::string* data);
 
@@ -296,6 +321,8 @@ public:
      * @brief Pop front certain number elements from TX buffer and remove them.
      * @param data is the string that poped front.
      * @return true if succeeded.
+     * @note - Error code be 1 if: "Error Stream: data can not be null."
+     * @note - Error code be 2 if: "Not enough data in the buffer to pop"
      *  */
     bool popFrontTxBuffer(std::string* data, size_t dataSize = 1);
 
@@ -303,15 +330,17 @@ public:
      * @brief Pop front certain number elements from TX buffer and remove them.
      * @param data is the string that poped front.
      * @return true if succeeded.
+     * @note - Error code be 1 if: "Error Stream: data can not be null."
+     * @note - Error code be 2 if: "Not enough data in the buffer to pop"
      *  */
     bool popFrontTxBuffer(char* data, size_t dataSize = 1);
-
-    bool removeFrontTxBuffer(size_t dataSize = 1);
 
     /**
      * @brief Pop front certain number elements from RX buffer and remove them.
      * @param data is the string that poped front.
      * @return true if succeeded.
+     * @note - Error code be 1 if: "Error Stream: data can not be null."
+     * @note - Error code be 2 if: "Not enough data in the buffer to pop"
      *  */
     bool popFrontRxBuffer(std::string* data, size_t dataSize = 1);
 
@@ -319,6 +348,8 @@ public:
      * @brief Pop front certain number elements from RX buffer and remove them.
      * @param data is the string that poped front.
      * @return true if succeeded.
+     * @note - Error code be 1 if: "Error Stream: data can not be null."
+     * @note - Error code be 2 if: "Not enough data in the buffer to pop"
      *  */
     bool popFrontRxBuffer(char* data, size_t dataSize = 1);
 
@@ -326,6 +357,7 @@ public:
      * @brief Pop front all elements from TX buffer and remove them.
      * @param data is the string that poped front.
      * @return true if succeeded.
+     * @note - Error code be 1 if: "Error Stream: data can not be null."
      *  */
     bool popAllTxBuffer(std::string* data);
 
@@ -333,6 +365,7 @@ public:
      * @brief Pop front all elements from TX buffer and remove them.
      * @param data is the string that poped front.
      * @return true if succeeded.
+     * @note - Error code be 1 if: "Error Stream: data can not be null."
      *  */
     bool popAllTxBuffer(char* data);
 
@@ -340,6 +373,7 @@ public:
      * @brief Pop front all elements from RX buffer and remove them.
      * @param data is the string that poped front.
      * @return true if succeeded.
+     * @note - Error code be 1 if: "Error Stream: data can not be null."
      *  */
     bool popAllRxBuffer(std::string* data);
 
@@ -347,6 +381,7 @@ public:
      * @brief Pop front all elements from RX buffer and remove them.
      * @param data is the string that poped front.
      * @return true if succeeded.
+     * @note - Error code be 1 if: "Error Stream: data can not be null."
      *  */
     bool popAllRxBuffer(char* data);
 

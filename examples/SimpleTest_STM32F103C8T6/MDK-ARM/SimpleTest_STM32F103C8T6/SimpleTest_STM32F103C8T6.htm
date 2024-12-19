@@ -3,7 +3,7 @@
 <title>Static Call Graph - [SimpleTest_STM32F103C8T6\SimpleTest_STM32F103C8T6.axf]</title></head>
 <body><HR>
 <H1>Static Call Graph for image SimpleTest_STM32F103C8T6\SimpleTest_STM32F103C8T6.axf</H1><HR>
-<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 6190004: Last Updated: Fri Dec 13 17:12:25 2024
+<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 6190004: Last Updated: Fri Dec 20 01:53:35 2024
 <BR><P>
 <H3>Maximum Stack Usage =        324 bytes + Unknown(Functions without stacksize, Cycles, Untraceable Function Pointers)</H3><H3>
 Call chain for Maximum Stack Depth:</H3>
@@ -951,7 +951,7 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[50]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
 </UL>
 
-<P><STRONG><a name="[98]"></a>Stream::popFrontTxBuffer(std::__2::basic_string&lang;char, std::__2::char_traits&lang;char&rang;, std::__2::allocator&lang;char&rang;&rang;*, unsigned int)</STRONG> (Thumb, 110 bytes, Stack size 48 bytes, stream.o(.text._ZN6Stream16popFrontTxBufferEPNSt3__212basic_stringIcNS0_11char_traitsIcEENS0_9allocatorIcEEEEj))
+<P><STRONG><a name="[98]"></a>Stream::popFrontTxBuffer(std::__2::basic_string&lang;char, std::__2::char_traits&lang;char&rang;, std::__2::allocator&lang;char&rang;&rang;*, unsigned int)</STRONG> (Thumb, 138 bytes, Stack size 48 bytes, stream.o(.text._ZN6Stream16popFrontTxBufferEPNSt3__212basic_stringIcNS0_11char_traitsIcEENS0_9allocatorIcEEEEj))
 <BR><BR>[Stack]<UL><LI>Max Depth = 240 + Unknown Stack Size
 <LI>Call Chain = Stream::popFrontTxBuffer(std::__2::basic_string&lang;char, std::__2::char_traits&lang;char&rang;, std::__2::allocator&lang;char&rang;&rang;*, unsigned int) &rArr; std::__2::basic_string&lang;char, std::__2::char_traits&lang;char&rang;, std::__2::allocator&lang;char&rang;&rang;::operator=[abi:v16000](std::__2::basic_string&lang;char, std::__2::char_traits&lang;char&rang;, std::__2::allocator&lang;char&rang;&rang;&&) &rArr; std::__2::basic_string&lang;char, std::__2::char_traits&lang;char&rang;, std::__2::allocator&lang;char&rang;&rang;::__move_assign[abi:v16000](std::__2::basic_string&lang;char, std::__2::char_traits&lang;char&rang;, std::__2::allocator&lang;char&rang;&rang;&, std::__2::integral_constant&lang;bool, true&rang;) &rArr; std::__2::allocator_traits&lang;std::__2::allocator&lang;char&rang;&rang;::deallocate[abi:v16000](std::__2::allocator&lang;char&rang;&, char*, unsigned int) &rArr; std::__2::allocator&lang;char&rang;::deallocate[abi:v16000](char*, unsigned int) &rArr; std::__2::__libcpp_deallocate[abi:v16000](void*, unsigned int, unsigned int) &rArr; void std::__2::__do_deallocate_handle_size[abi:v16000]&lang;&rang;(void*, unsigned int) &rArr; void std::__2::__libcpp_operator_delete[abi:v16000]&lang;void*, unsigned int&rang;(void*, unsigned int) &rArr; operator delete(void*, unsigned int) &rArr; operator delete(void*) &rArr; free
 </UL>
