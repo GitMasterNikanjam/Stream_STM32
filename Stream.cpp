@@ -401,6 +401,13 @@ Stream::Stream()
     _txBuffer = new char[_txBufferSize]; // Allocate and zero-initialize TX buffer
     _rxBuffer = new char[_rxBufferSize]; // Allocate and zero-initialize RX buffer
 
+    _txPosition = 0;
+    _rxPosition = 0;
+
+    // Null-terminate the remaining buffer (optional for string usage)
+    memset(_txBuffer, '\0', _txBufferSize);
+    memset(_rxBuffer, '\0', _rxBufferSize);
+
     errorCode = 0;
 }
 
@@ -720,12 +727,14 @@ bool Stream::popAllRxBuffer(std::string* data)
 
 size_t Stream::availableTx() 
 {
-    return strlen(_txBuffer);
+    // return strlen(_txBuffer);
+    return _txPosition;
 }
 
 size_t Stream::availableRx() 
 {
-    return strlen(_rxBuffer);
+    // return strlen(_rxBuffer);
+    return _rxPosition;
 }
 
 
