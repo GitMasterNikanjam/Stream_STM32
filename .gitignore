@@ -1,2 +1,14 @@
 Drivers/
 examples/SimpleTest_STM32F103C8T6/MDK-ARM/SimpleTest_STM32F103C8T6
+.vscode/
+mcu_select.h
+*.o
+*.crf
+*.d
+*.axf
+*.htm
+*.hex
+*.lnp
+*.map
+*.sct
+*.dep
