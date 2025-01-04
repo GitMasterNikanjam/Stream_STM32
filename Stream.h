@@ -8,6 +8,13 @@
 #include <cstdint>  // Defines fixed-width integer types (int32_t, uint64_t, etc.) and limits for platform-independent integer handling.
 #include <string>   // Provides the std::string class for working with dynamic strings in C++
 
+// ##################################################################################
+// Define global macros:
+
+/* Define size for the receive and transmit buffer */
+#define STREAM_RX_DATA_SIZE  1000
+#define STREAM_TX_DATA_SIZE  1000
+
 // ####################################################################################################
 // Public General functions
 
@@ -187,7 +194,6 @@ bool stringToDouble(const char* str, double* num);
 /**
  * @class Stream
  * @brief This class can be used as an object for data receive and transmit flow management.
- * @note - Default TxSize and RxSize is 256 byte.
  */
 class Stream
 {
@@ -198,7 +204,6 @@ public:
 
     /**
      * Constructor. Init some variables and parameters.
-     * @note Default TxSize and RxSize is 256 byte.
      */
     Stream();
 
@@ -211,14 +216,14 @@ public:
      * @brief Change transmit buffer size. Delete Tx buffer and Reallocate it.
      * @param txSize: Size of the transmit buffer.
      */
-    void setTxBufferSize(size_t txSize);
+    // void setTxBufferSize(size_t txSize);
 
     /**
      * @brief Change receive buffer size. Delete Rx buffer and Reallocate it.
      * @param rxSize: Size of the transmit buffer.
      */
-    void setRxBufferSize(size_t rxSize);
-
+    // void setRxBufferSize(size_t rxSize);
+    
     /**
      * @brief Return current TxBuffer size.
      */
@@ -399,17 +404,21 @@ public:
 
 private:
 
-    /// @brief Transmit buffer.
-    char* _txBuffer;
+    // char* _txBuffer;
 
-    /// @brief Transmit buffer size.
-    size_t _txBufferSize;
+    // char* _rxBuffer;
+    
+    /// @brief Transmit buffer.
+    char _txBuffer[STREAM_TX_DATA_SIZE];    
 
     /// @brief Receive buffer.
-    char* _rxBuffer;
+    char _rxBuffer[STREAM_RX_DATA_SIZE]; 
+
+    /// @brief Transmit buffer size.
+    size_t _txBufferSize = STREAM_TX_DATA_SIZE;
 
     /// @brief Receive buffer size.
-    size_t _rxBufferSize;
+    size_t _rxBufferSize = STREAM_RX_DATA_SIZE;
 
     /// @brief The last character position in the _txBuffer.
     size_t _txPosition;

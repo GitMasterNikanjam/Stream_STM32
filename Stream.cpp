@@ -395,11 +395,11 @@ bool Stream_utility::stringToDouble(const char* str, double* num)
 
 Stream::Stream()
 {
-    _txBufferSize = 256;
-    _rxBufferSize = 256;
+    // _txBufferSize = 256;
+    // _rxBufferSize = 256;
 
-    _txBuffer = new char[_txBufferSize]; // Allocate and zero-initialize TX buffer
-    _rxBuffer = new char[_rxBufferSize]; // Allocate and zero-initialize RX buffer
+    // _txBuffer = new char[_txBufferSize]; // Allocate and zero-initialize TX buffer
+    // _rxBuffer = new char[_rxBufferSize]; // Allocate and zero-initialize RX buffer
 
     _txPosition = 0;
     _rxPosition = 0;
@@ -413,23 +413,23 @@ Stream::Stream()
 
 Stream::~Stream()
 {
-    delete[] _txBuffer;
-    delete[] _rxBuffer;
+    // delete[] _txBuffer;
+    // delete[] _rxBuffer;
 }
 
-void Stream::setTxBufferSize(size_t size) 
-{
-    delete[] _txBuffer;
-    _txBufferSize = size;
-    _txBuffer = new char[_txBufferSize]; // Reallocate TX buffer
-}
+// void Stream::setTxBufferSize(size_t size) 
+// {
+//     delete[] _txBuffer;
+//     _txBufferSize = size;
+//     _txBuffer = new char[_txBufferSize]; // Reallocate TX buffer
+// }
 
-void Stream::setRxBufferSize(size_t size) 
-{
-    delete[] _rxBuffer;
-    _rxBufferSize = size;
-    _rxBuffer = new char[_rxBufferSize]; // Reallocate RX buffer
-}
+// void Stream::setRxBufferSize(size_t size) 
+// {
+//     delete[] _rxBuffer;
+//     _rxBufferSize = size;
+//     _rxBuffer = new char[_rxBufferSize]; // Reallocate RX buffer
+// }
 
 const char* Stream::getTxBuffer() 
 {
@@ -522,19 +522,16 @@ bool Stream::pushBackRxBuffer(const char* data, size_t dataSize)
         return false;
     }
 
-    if(_rxPosition + dataSize <= _rxBufferSize)
+    // Check for buffer overflow
+    if (_rxPosition + dataSize > _rxBufferSize) 
     {
-        for (size_t i = 0; i < dataSize; ++i) 
-        {
-            _rxBuffer[_rxPosition] = data[i];
-            ++_rxPosition; // Move position forward after writing
-        }
+        errorCode = 2; // "RX Buffer Overflow."
+        return false;
     }
-    else
-    {
-        errorCode = 2;   // "RX Buffer Overflow");
-        return false;  
-    }
+
+    // Copy the data into the buffer
+    std::memcpy(&_rxBuffer[_rxPosition], data, dataSize);
+    _rxPosition += dataSize; // Update the position
 
     return true;
 }
@@ -662,6 +659,12 @@ bool Stream::popFrontRxBuffer(char* data, size_t dataSize)
     if(data == nullptr)
     {
         errorCode = 1;
+        return false;
+    }
+
+    if (dataSize == 0) 
+    {
+        errorCode = 3; // "Error: Data size cannot be zero."
         return false;
     }
 
