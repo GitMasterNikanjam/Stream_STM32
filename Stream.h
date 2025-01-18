@@ -11,9 +11,6 @@
 // ##################################################################################
 // Define global macros:
 
-/* Define size for the receive and transmit buffer */
-#define STREAM_RX_DATA_SIZE  1000
-#define STREAM_TX_DATA_SIZE  1000
 
 // ####################################################################################################
 // Public General functions
@@ -203,26 +200,32 @@ public:
     int8_t errorCode;
 
     /**
-     * Constructor. Init some variables and parameters.
+     * @brief Constructor. Init some variables and parameters. Init TX/RX buffers.
+     * @param txBuffer: Transmit buffer pointer.
+     * @param txBufferSize: Transmit buffer size.
+     * @param rxBuffer: Recieve buffer pointer.
+     * @param rxBufferSize: Recieve buffer size.
      */
-    Stream();
+    Stream(char* txBuffer = nullptr, size_t txBufferSize = 0, char* rxBuffer = nullptr, size_t rxBufferSize = 0);
 
     /**
-     * Destructor. delete buffers.
+     * Destructor.
      */
     ~Stream();
 
     /**
-     * @brief Change transmit buffer size. Delete Tx buffer and Reallocate it.
-     * @param txSize: Size of the transmit buffer.
+     * @brief Set transmit buffer.
+     * @param txBuffer: Transmit buffer pointer.
+     * @param txBufferSize: Transmit buffer size.
      */
-    // void setTxBufferSize(size_t txSize);
+    void setTxBuffer(char* txBuffer, size_t txBufferSize);
 
     /**
-     * @brief Change receive buffer size. Delete Rx buffer and Reallocate it.
-     * @param rxSize: Size of the transmit buffer.
+     * @brief Set receive buffer.
+     * @param rxBuffer: Recieve buffer pointer.
+     * @param rxBufferSize: Recieve buffer size.
      */
-    // void setRxBufferSize(size_t rxSize);
+    void setRxBuffer(char* rxBuffer, size_t rxBufferSize);
     
     /**
      * @brief Return current TxBuffer size.
@@ -404,21 +407,17 @@ public:
 
 private:
 
-    // char* _txBuffer;
+    /// @brief Transmit buffer pointer.
+    char* _txBuffer;
 
-    // char* _rxBuffer;
-    
-    /// @brief Transmit buffer.
-    char _txBuffer[STREAM_TX_DATA_SIZE];    
-
-    /// @brief Receive buffer.
-    char _rxBuffer[STREAM_RX_DATA_SIZE]; 
+    /// @brief Receive buffer pointer.
+    char* _rxBuffer;
 
     /// @brief Transmit buffer size.
-    size_t _txBufferSize = STREAM_TX_DATA_SIZE;
+    size_t _txBufferSize;
 
     /// @brief Receive buffer size.
-    size_t _rxBufferSize = STREAM_RX_DATA_SIZE;
+    size_t _rxBufferSize;
 
     /// @brief The last character position in the _txBuffer.
     size_t _txPosition;

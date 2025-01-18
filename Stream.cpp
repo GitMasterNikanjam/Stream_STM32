@@ -393,13 +393,13 @@ bool Stream_utility::stringToDouble(const char* str, double* num)
 // ###########################################################################################################
 // Stream class:
 
-Stream::Stream()
+Stream::Stream(char* txBuffer, size_t txBufferSize, char* rxBuffer, size_t rxBufferSize)
 {
-    // _txBufferSize = 256;
-    // _rxBufferSize = 256;
+    _txBufferSize = txBufferSize;
+    _rxBufferSize = rxBufferSize;
 
-    // _txBuffer = new char[_txBufferSize]; // Allocate and zero-initialize TX buffer
-    // _rxBuffer = new char[_rxBufferSize]; // Allocate and zero-initialize RX buffer
+    _txBuffer = txBuffer;
+    _rxBuffer = rxBuffer;
 
     _txPosition = 0;
     _rxPosition = 0;
@@ -413,23 +413,22 @@ Stream::Stream()
 
 Stream::~Stream()
 {
-    // delete[] _txBuffer;
-    // delete[] _rxBuffer;
+
 }
 
-// void Stream::setTxBufferSize(size_t size) 
-// {
-//     delete[] _txBuffer;
-//     _txBufferSize = size;
-//     _txBuffer = new char[_txBufferSize]; // Reallocate TX buffer
-// }
+void Stream::setTxBuffer(char* txBuffer, size_t txBufferSize)
+{
+    _txBufferSize = txBufferSize;
+    _txBuffer = txBuffer;
+    _txPosition = 0;
+}
 
-// void Stream::setRxBufferSize(size_t size) 
-// {
-//     delete[] _rxBuffer;
-//     _rxBufferSize = size;
-//     _rxBuffer = new char[_rxBufferSize]; // Reallocate RX buffer
-// }
+void Stream::setRxBuffer(char* rxBuffer, size_t rxBufferSize)
+{
+    _rxBufferSize = rxBufferSize;
+    _rxBuffer = rxBuffer;
+    _rxPosition = 0;
+}
 
 const char* Stream::getTxBuffer() 
 {
