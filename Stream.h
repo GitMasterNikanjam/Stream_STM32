@@ -183,6 +183,13 @@ bool stringToFloat(const char* str, float* num);
  */
 bool stringToDouble(const char* str, double* num);
 
+/**
+ * @brief Check data string for certain type.
+ * @param type can be: {uint8, uint16, uint32, uint64, int8, int16, int32, int64, float, double, string, bool}
+ * @return true if data type is valid.
+ *  */ 
+bool checkValuetype(const char *data, const char *type);
+
 }
 
 // ######################################################################################################

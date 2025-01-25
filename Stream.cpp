@@ -390,6 +390,64 @@ bool Stream_utility::stringToDouble(const char* str, double* num)
     return true;
 }
 
+bool Stream_utility::checkValuetype(const char *data, const char *type)
+{
+    if(strcmp(type, "uint8") == 0)
+    {
+        return isUInt8(data);
+    }
+    else if(strcmp(type, "uint16") == 0)
+    {
+        return isUInt16(data);
+    }
+    else if(strcmp(type, "uint32") == 0)
+    {
+        return isUInt32(data);
+    }
+        else if(strcmp(type, "uint64") == 0)
+    {
+        return isUInt64(data);
+    }
+        else if(strcmp(type, "int8") == 0)
+    {
+        return isInt8(data);
+    }
+        else if(strcmp(type, "int16") == 0)
+    {
+        return isInt16(data);
+    }
+        else if(strcmp(type, "int32") == 0)
+    {
+        return isInt32(data);
+    }
+        else if(strcmp(type, "int64") == 0)
+    {
+        return isInt64(data);
+    }
+        else if(strcmp(type, "float") == 0)
+    {
+        return isFloat(data);
+    }
+        else if(strcmp(type, "double") == 0)
+    {
+        return isDouble(data);
+    }
+        else if(strcmp(type, "string") == 0)
+    {
+        return true;
+    }
+        else if(strcmp(type, "bool") == 0)
+    {
+        return isBoolean(data);
+    }
+    else
+    {
+        return false;
+    }
+
+    return true;
+}
+
 // ###########################################################################################################
 // Stream class:
 
