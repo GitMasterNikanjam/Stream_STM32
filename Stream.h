@@ -8,9 +8,29 @@
 #include <cstdint>  // Defines fixed-width integer types (int32_t, uint64_t, etc.) and limits for platform-independent integer handling.
 #include <string>   // Provides the std::string class for working with dynamic strings in C++
 
-// ##################################################################################
+// ###################################################################################################
 // Define global macros:
 
+// ###################################################################################################
+// Data type enumaration:
+
+enum dataTypeEnum
+{
+    dataType_none,
+    dataType_uint8,
+    dataType_uint16,
+    dataType_uint32,
+    dataType_uint64,
+    dataType_int8,
+    dataType_int16,
+    dataType_int32,
+    dataType_int64,
+    dataType_float,
+    dataType_double,
+    dataType_char,
+    dataType_string,
+    dataType_bool
+};
 
 // ####################################################################################################
 // Public General functions
@@ -184,11 +204,21 @@ bool stringToFloat(const char* str, float* num);
 bool stringToDouble(const char* str, double* num);
 
 /**
- * @brief Check data string for certain type.
+ * @brief Check data value in string format for certain data type in string format.
+ * @param data: is the value of a data in string format.
  * @param type can be: {uint8, uint16, uint32, uint64, int8, int16, int32, int64, float, double, string, bool}
- * @return true if data type is valid.
+ * @return true if data type is correct.
  *  */ 
 bool checkValuetype(const char *data, const char *type);
+
+
+/**
+ * @brief Check data value in string format for certain data type in data type enumaration.
+ * @param data: is the value of a data in string format.
+ * @param type: is the data type enumaration. eg: dataType_uint8, dataType_float, ... .
+ * @return true if data type is correct.
+ *  */ 
+bool checkValuetype(const char *data, dataTypeEnum type);
 
 }
 

@@ -448,6 +448,56 @@ bool Stream_utility::checkValuetype(const char *data, const char *type)
     return true;
 }
 
+bool Stream_utility::checkValuetype(const char *data, dataTypeEnum type)
+{
+    switch(type)
+    {
+        case dataType_uint8:
+            return isUInt8(data);
+        break;
+        case dataType_uint16:
+            return isUInt16(data);
+        break;
+        case dataType_uint32:
+            return isUInt32(data);
+        break;
+        case dataType_uint64:
+            return isUInt64(data);
+        break;
+        case dataType_int8:
+            return isInt8(data);
+        break;
+        case dataType_int16:
+            return isInt16(data);
+        break;
+        case dataType_int32:
+            return isInt32(data);
+        break;
+        case dataType_int64:
+            return isInt64(data);
+        break;
+        case dataType_float:
+            return isFloat(data);
+        break;
+        case dataType_double:
+            return isDouble(data);
+        break;
+        case dataType_char:
+            return true;
+        break;
+        case dataType_string:
+            return true;
+        break;
+        case dataType_bool:
+            return isBoolean(data);
+        break;
+        default:
+            return false;
+    }
+
+    return true;
+}
+
 // ###########################################################################################################
 // Stream class:
 
