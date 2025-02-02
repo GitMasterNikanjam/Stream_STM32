@@ -6,29 +6,38 @@
 // #####################################################################################################
 // Public General functions
 
-char* Stream_utility::trimString(const char* data) 
+void Stream_utility::trimString(char* data) 
 {
-    if(data == NULL)
+    if (data == nullptr)
     {
-        return NULL;
+        return;  // Ensure the input is not null
     }
 
-    char * output = new char[strlen(data) + 1];
-    std::string str;
-    str.assign(data);
+    size_t start = 0;
+    size_t end = std::strlen(data) - 1;  // Find the end of the string
 
-    size_t start = str.find_first_not_of(' ');  // Find first non-space character
-    size_t end = str.find_last_not_of(' ');     // Find last non-space character
-
-    if((start == std::string::npos))
+    // Trim leading whitespace
+    while (start <= end && std::isspace(data[start])) 
     {
-        strcmp(output, "");
-        return output;
+        ++start;
     }
-    
-    strcpy(output, str.substr(start, end - start + 1).c_str());
-    
-    return output;
+
+    // Trim trailing whitespace
+    while (end >= start && std::isspace(data[end])) 
+    {
+        --end;
+    }
+
+    // If there are any characters left, shift them to the front
+    if (start <= end) 
+    {
+        std::memmove(data, data + start, end - start + 1);  // Shift remaining characters
+        data[end - start + 1] = '\0';  // Null-terminate the string
+    }
+    else 
+    {
+        data[0] = '\0';  // If the string is only whitespace, make it an empty string
+    }
 }
 
 std::string Stream_utility::trimString(std::string data) 
@@ -36,7 +45,7 @@ std::string Stream_utility::trimString(std::string data)
     uint32_t size = data.length();
     char* strchar = new char[size + 1];
     strcpy(strchar, data.c_str());
-    strcpy(strchar, trimString(strchar));
+    trimString(strchar);
     data.assign(strchar);
 
     return data;
@@ -390,7 +399,7 @@ bool Stream_utility::stringToDouble(const char* str, double* num)
     return true;
 }
 
-bool Stream_utility::checkValuetype(const char *data, const char *type)
+bool Stream_utility::checkValueType(const char *data, const char *type)
 {
     if(strcmp(type, "uint8") == 0)
     {
@@ -448,47 +457,47 @@ bool Stream_utility::checkValuetype(const char *data, const char *type)
     return true;
 }
 
-bool Stream_utility::checkValuetype(const char *data, dataTypeEnum type)
+bool Stream_utility::checkValueType(const char *data, dataTypeEnum type)
 {
     switch(type)
     {
-        case dataType_uint8:
+        case uint8Type:
             return isUInt8(data);
         break;
-        case dataType_uint16:
+        case uint16Type:
             return isUInt16(data);
         break;
-        case dataType_uint32:
+        case uint32Type:
             return isUInt32(data);
         break;
-        case dataType_uint64:
+        case uint64Type:
             return isUInt64(data);
         break;
-        case dataType_int8:
+        case int8Type:
             return isInt8(data);
         break;
-        case dataType_int16:
+        case int16Type:
             return isInt16(data);
         break;
-        case dataType_int32:
+        case int32Type:
             return isInt32(data);
         break;
-        case dataType_int64:
+        case int64Type:
             return isInt64(data);
         break;
-        case dataType_float:
+        case floatType:
             return isFloat(data);
         break;
-        case dataType_double:
+        case doubleType:
             return isDouble(data);
         break;
-        case dataType_char:
+        case charType:
             return true;
         break;
-        case dataType_string:
+        case stringType:
             return true;
         break;
-        case dataType_bool:
+        case boolType:
             return isBoolean(data);
         break;
         default:
@@ -496,6 +505,35 @@ bool Stream_utility::checkValuetype(const char *data, dataTypeEnum type)
     }
 
     return true;
+}
+
+std::string Stream_utility::dataValueToString(const dataValueUnion& value, const dataTypeEnum type)
+{
+    switch (type)
+    {
+        case uint8Type:
+            return std::to_string(value.uint8Value);
+        case uint16Type:
+            return std::to_string(value.uint16Value);
+        case uint32Type:
+            return std::to_string(value.uint32Value);
+        case int8Type:
+            return std::to_string(value.int8Value);
+        case int16Type:
+            return std::to_string(value.int16Value);
+        case int32Type:
+            return std::to_string(value.int32Value);
+        case floatType:
+            return std::to_string(value.floatValue);
+        case doubleType:
+            return std::to_string(value.doubleValue);
+        case boolType:
+            return value.boolValue ? "true" : "false";
+        case stringType:
+            return std::string(value.stringValue);
+        default:
+            return "Unsupported Type";
+    }
 }
 
 // ###########################################################################################################

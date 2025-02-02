@@ -11,25 +11,45 @@
 // ###################################################################################################
 // Define global macros:
 
+
 // ###################################################################################################
-// Data type enumaration:
+// Data type enumaration and value union :
 
 enum dataTypeEnum
 {
-    dataType_none,
-    dataType_uint8,
-    dataType_uint16,
-    dataType_uint32,
-    dataType_uint64,
-    dataType_int8,
-    dataType_int16,
-    dataType_int32,
-    dataType_int64,
-    dataType_float,
-    dataType_double,
-    dataType_char,
-    dataType_string,
-    dataType_bool
+    noneType,
+    uint8Type,
+    uint16Type,
+    uint32Type,
+    uint64Type,
+    int8Type,
+    int16Type,
+    int32Type,
+    int64Type,
+    floatType,
+    doubleType,
+    charType,
+    stringType,
+    boolType
+};
+
+/**
+ * @brief Union to store different data types efficiently
+ *  */ 
+union dataValueUnion 
+{
+    uint8_t uint8Value;
+    uint16_t uint16Value;
+    uint32_t uint32Value;
+    uint64_t uint64Value;
+    int8_t int8Value;
+    int16_t int16Value;
+    int32_t int32Value;
+    int64_t int64Value;
+    float floatValue;
+    double doubleValue;
+    char stringValue[8];
+    bool boolValue;
 };
 
 // ####################################################################################################
@@ -47,7 +67,7 @@ namespace Stream_utility
  * @param data is the Input string that wanted to trim
  * @return Trimed string.
  */
-char* trimString(const char* data);
+void trimString(char* data);
 
 /**
  * @brief Function to trim leading and trailing spaces from a string.
@@ -209,8 +229,7 @@ bool stringToDouble(const char* str, double* num);
  * @param type can be: {uint8, uint16, uint32, uint64, int8, int16, int32, int64, float, double, string, bool}
  * @return true if data type is correct.
  *  */ 
-bool checkValuetype(const char *data, const char *type);
-
+bool checkValueType(const char *data, const char *type);
 
 /**
  * @brief Check data value in string format for certain data type in data type enumaration.
@@ -218,7 +237,10 @@ bool checkValuetype(const char *data, const char *type);
  * @param type: is the data type enumaration. eg: dataType_uint8, dataType_float, ... .
  * @return true if data type is correct.
  *  */ 
-bool checkValuetype(const char *data, dataTypeEnum type);
+bool checkValueType(const char *data, const dataTypeEnum type);
+
+/// @brief Helper function to convert dataValueUnion to string based on ParamType_t
+std::string dataValueToString(const dataValueUnion& value, const dataTypeEnum type);
 
 }
 
