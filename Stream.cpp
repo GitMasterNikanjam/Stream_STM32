@@ -8,9 +8,9 @@
 
 void Stream_utility::trimString(char* data) 
 {
-    if (data == nullptr)
+    if (data == nullptr || data[0] == '\0')
     {
-        return;  // Ensure the input is not null
+        return;  // If the input is null or empty, nothing to trim
     }
 
     size_t start = 0;
@@ -22,33 +22,21 @@ void Stream_utility::trimString(char* data)
         ++start;
     }
 
+    // If there's nothing left after trimming leading spaces, empty the string
+    if (start > end) {
+        data[0] = '\0';  // Empty string
+        return;
+    }
+
     // Trim trailing whitespace
     while (end >= start && std::isspace(data[end])) 
     {
         --end;
     }
 
-    // If there are any characters left, shift them to the front
-    if (start <= end) 
-    {
-        std::memmove(data, data + start, end - start + 1);  // Shift remaining characters
-        data[end - start + 1] = '\0';  // Null-terminate the string
-    }
-    else 
-    {
-        data[0] = '\0';  // If the string is only whitespace, make it an empty string
-    }
-}
-
-std::string Stream_utility::trimString(std::string data) 
-{
-    uint32_t size = data.length();
-    char* strchar = new char[size + 1];
-    strcpy(strchar, data.c_str());
-    trimString(strchar);
-    data.assign(strchar);
-
-    return data;
+    // Shift characters and null-terminate
+    std::memmove(data, data + start, end - start + 1);  
+    data[end - start + 1] = '\0';  // Null-terminate the string
 }
 
 bool Stream_utility::splitString(const char* data, char delimiter, char* firstSection, char* secondSection) 

@@ -45,7 +45,7 @@
 /* USER CODE BEGIN PV */
 char txBuffer[1000], rxBuffer[1000];
 Stream stream;
-char message[] = "Hello";
+char message[] = "      He llo         ";
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -95,10 +95,12 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  stream.setTxBuffer(txBuffer, 1000);
-  stream.pushBackTxBuffer(message, strlen(message));
-  memset(message, 0, strlen(message));
-  stream.popFrontTxBuffer(message,2);
+
+  Stream_utility::trimString(message);
+  // stream.setTxBuffer(txBuffer, 1000);
+  // stream.pushBackTxBuffer(message, strlen(message));
+  // memset(message, 0, strlen(message));
+  // stream.popFrontTxBuffer(message,2);
   while (1)
   {
     /* USER CODE END WHILE */

@@ -70,13 +70,6 @@ namespace Stream_utility
 void trimString(char* data);
 
 /**
- * @brief Function to trim leading and trailing spaces from a string.
- * @param data is the Input string that wanted to trim
- * @return Trimed string.
- */
-std::string trimString(std::string data);
-
-/**
  * @brief Function to split a string by a delimiter in two section and return a splited strings.
  * @param firstSection is the first part of splited string.
  * @param secondSection is the second part of splited string.
