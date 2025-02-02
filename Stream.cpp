@@ -328,6 +328,30 @@ bool Stream_utility::isIntiger(const char* str)
     return true; // Return true if all characters are digits
 }
 
+bool Stream_utility::isUintiger(const char* str)
+{
+    if (str == nullptr || *str == '\0' || *str == '-') return false; // Null or empty string or minus number
+
+    if(*str)
+    {
+        if ( (*str == '+') )
+        {
+            ++str;
+        }
+    }
+
+    while (*str) 
+    {
+        // Check if the character is not a digit (i.e., not '0' to '9')
+        if (*str < '0' || *str > '9') 
+        {
+            return false; // Return false if it's not a valid digit
+        }
+        ++str;
+    }
+    return true; // Return true if all characters are digits
+}
+
 bool Stream_utility::endsWith(const char* str, const char* suffix) 
 {
     size_t strLen = std::strlen(str);
@@ -339,15 +363,168 @@ bool Stream_utility::endsWith(const char* str, const char* suffix)
     return false;
 }
 
+bool Stream_utility::stringToUint8(const char* str, uint8_t* num)
+{
+    if(isUInt8(str) == false)
+    {
+        return false;
+    }
+
+    // Use sscanf to convert the string to an integer
+    unsigned int temp;
+    if (std::sscanf(str, "%u", &temp) != 1) 
+    {
+        return false; // sscanf failed to parse a valid integer
+    }
+
+    // Check if the value fits within the uint8_t range (0-255)
+    if (temp > 255) 
+    {
+        return false; // The value is out of range for uint8_t
+    }
+
+    *num = (uint8_t)(temp); // Successfully convert to uint8_t
+
+    return true;   
+}
+
+bool Stream_utility::stringToUint16(const char* str, uint16_t* num)
+{
+    if(isUInt16(str) == false)
+    {
+        return false;
+    }
+
+    // Use sscanf to convert the string to an integer
+    unsigned int temp;
+    if (std::sscanf(str, "%u", &temp) != 1) 
+    {
+        return false; // sscanf failed to parse a valid integer
+    }
+
+    // Check if the value fits within the uint16_t range
+    if (temp > 65535) {
+        return false; // The value is out of range for uint8_t
+    }
+
+    *num = (uint16_t)(temp); // Successfully convert to uint8_t
+    
+    return true;   
+}
+
+bool Stream_utility::stringToUint32(const char* str, uint32_t* num)
+{
+    if(isUInt32(str) == false)
+    {
+        return false;
+    }
+
+    // Use sscanf to convert the string to an integer
+    unsigned int temp;
+    if (std::sscanf(str, "%u", &temp) != 1) 
+    {
+        return false; // sscanf failed to parse a valid integer
+    }
+
+    // Check if the value fits within the uint16_t range
+    if (temp > 4294967295) {
+        return false; // The value is out of range for uint8_t
+    }
+
+    *num = (uint32_t)(temp); // Successfully convert to uint8_t
+    
+    return true;   
+}
+
+bool Stream_utility::stringToUint64(const char* str, uint64_t* num)
+{
+    if(isUInt64(str) == false)
+    {
+        return false;
+    }
+
+    // Use sscanf to convert the string to an integer
+    if (std::sscanf(str, "%llu", num) != 1) 
+    {
+        return false; // sscanf failed to parse a valid integer
+    }
+    
+    return true;   
+}
+
+bool Stream_utility::stringToInt8(const char* str, int8_t* num)
+{
+    if(isInt8(str) == false)
+    {
+        return false;
+    }
+
+    // Use sscanf to convert the string to an integer
+    int temp;
+    if (std::sscanf(str, "%d", &temp) != 1) 
+    {
+        return false; // sscanf failed to parse a valid integer
+    }
+
+    // Check if the value fits within the int8_t range (-128 to 127)
+    if (temp < -128 || temp > 127) {
+        return false; // The value is out of range for int8_t
+    }
+
+    *num = (int8_t)(temp); // Successfully convert to int8_t
+    
+    return true;
+}
+
+bool Stream_utility::stringToInt16(const char* str, int16_t* num)
+{
+    if(isInt16(str) == false)
+    {
+        return false;
+    }
+
+    // Use sscanf to convert the string to an integer
+    int temp;
+    if (std::sscanf(str, "%d", &temp) != 1) 
+    {
+        return false; // sscanf failed to parse a valid integer
+    }
+
+    // Check if the value fits within the int16_t range (-32768 to 32767)
+    if (temp < -32768 || temp > 32767) {
+        return false; // The value is out of range for int16_t
+    }
+
+    *num = (int16_t)(temp); // Successfully convert to int16_t
+    
+    return true;
+}
+
 bool Stream_utility::stringToInt32(const char* str, int32_t* num)
 {
-    if(isIntiger(str) == false)
+    if(isInt32(str) == false)
     {
         return false;
     }
 
     // Use sscanf to convert the string to an integer
     if (std::sscanf(str, "%d", num) != 1) 
+    {
+        return false; // sscanf failed to parse a valid integer
+    }
+
+    return true;
+}
+
+bool Stream_utility::stringToInt64(const char* str, int64_t* num)
+{
+    if(isInt64(str) == false)
+    {
+        return false;
+    }
+
+    // Use sscanf to convert the string to an integer
+    if (std::sscanf(str, "%lld", num) != 1) 
     {
         return false; // sscanf failed to parse a valid integer
     }
@@ -363,11 +540,13 @@ bool Stream_utility::stringToFloat(const char* str, float* num)
     }
 
     // Use sscanf to convert the string to an integer
-    if (std::sscanf(str, "%f", num) != 1) 
+    float temp;
+    if (std::sscanf(str, "%f", &temp) != 1) 
     {
         return false; // sscanf failed to parse a valid integer
     }
 
+    *num = temp;
     return true;
 }
 
@@ -382,6 +561,86 @@ bool Stream_utility::stringToDouble(const char* str, double* num)
     if (std::sscanf(str, "%lf", num) != 1) 
     {
         return false; // sscanf failed to parse a valid integer
+    }
+
+    return true;
+}
+
+bool Stream_utility::stringToNumber(const char* str, dataValueUnion* num, dataTypeEnum type)
+{
+    // Convert value based on the parameter type
+    switch (type)
+    {
+        case uint8Type:
+            if(Stream_utility::stringToUint8(str, &num->uint8Value) == false) 
+            {
+                return false;
+            }
+        break;
+        case uint16Type:
+            if(Stream_utility::stringToUint16(str, &num->uint16Value) == false) 
+            {
+                return false;
+            }
+        break;
+        case uint32Type:
+            if(Stream_utility::stringToUint32(str, &num->uint32Value) == false) 
+            {
+                return false;
+            }
+        break;
+        case uint64Type:
+            if(Stream_utility::stringToUint64(str, &num->uint64Value) == false) 
+            {
+                return false;
+            }
+        break;
+        case int8Type:
+            if(Stream_utility::stringToInt8(str, &num->int8Value) == false) 
+            {
+                return false;
+            }
+        break;
+        case int16Type:
+            if(Stream_utility::stringToInt16(str, &num->int16Value) == false) 
+            {
+                return false;
+            }
+        break;
+        case int32Type:
+            if(Stream_utility::stringToInt32(str, &num->int32Value) == false) 
+            {
+                return false;
+            }
+        break;
+        case int64Type:
+            if(Stream_utility::stringToInt64(str, &num->int64Value) == false) 
+            {
+                return false;
+            }
+        break;
+        case floatType:
+            if(Stream_utility::stringToFloat(str, &num->floatValue) == false) 
+            {
+                return false;
+            }
+        break;
+        case doubleType:
+            if(Stream_utility::stringToDouble(str, &num->doubleValue) == false)  
+            {
+                return false;
+            }
+        break;
+        case boolType:
+            // Compare using std::strcmp instead of == for string content comparison
+            num->boolValue = (std::string(str) == "true" || std::string(str) == "1");
+        break;
+        case stringType:
+            std::strncpy(num->stringValue, str, sizeof(&num->stringValue) - 1);
+            num->stringValue[sizeof(num->stringValue) - 1] = '\0';  // Ensure null termination
+        break;
+        default:
+            return false;
     }
 
     return true;

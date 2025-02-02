@@ -190,17 +190,73 @@ bool isNumber(const char* str);
 bool isIntiger(const char* str);
 
 /**
+ * @brief Function to check a string are valid unsigned intiger number.
+ * @note - '+' character at the first of string are acceptable.
+ * @return true if succeeded.
+ */
+bool isUintiger(const char* str);
+
+/**
  * @brief Function to check if a string ends with a given suffix.
  * @return true if succeeded.
  */
 bool endsWith(const char* str, const char* suffix);
 
 /**
- * @brief Convert string to intiger number.
+ * @brief Convert string to Uint8 number.
+ * @param num is the number for  store intiger value.
+ * @return true if str is intiger.
+ */
+bool stringToUint8(const char* str, uint8_t* num);
+
+/**
+ * @brief Convert string to Uint16 number.
+ * @param num is the number for  store intiger value.
+ * @return true if str is intiger.
+ */
+bool stringToUint16(const char* str, uint16_t* num);
+
+/**
+ * @brief Convert string to Uint32 number.
+ * @param num is the number for  store intiger value.
+ * @return true if str is intiger.
+ */
+bool stringToUint32(const char* str, uint32_t* num);
+
+/**
+ * @brief Convert string to Uint64 number.
+ * @param num is the number for  store intiger value.
+ * @return true if str is intiger.
+ */
+bool stringToUint64(const char* str, uint64_t* num);
+
+/**
+ * @brief Convert string to Int8 number.
+ * @param num is the number for  store intiger value.
+ * @return true if str is intiger.
+ */
+bool stringToInt8(const char* str, int8_t* num);
+
+/**
+ * @brief Convert string to Int16 number.
+ * @param num is the number for  store intiger value.
+ * @return true if str is intiger.
+ */
+bool stringToInt16(const char* str, int16_t* num);
+
+/**
+ * @brief Convert string to Int32 number.
  * @param num is the number for  store intiger value.
  * @return true if str is intiger.
  */
 bool stringToInt32(const char* str, int32_t* num);
+
+/**
+ * @brief Convert string to Int64 number.
+ * @param num is the number for  store intiger value.
+ * @return true if str is intiger.
+ */
+bool stringToInt64(const char* str, int64_t* num);
 
 /**
  * @brief Convert string to float number.
@@ -215,6 +271,14 @@ bool stringToFloat(const char* str, float* num);
  * @return true if str is double.
  */
 bool stringToDouble(const char* str, double* num);
+
+/**
+ * @brief Convert a string to a number according to type then store it.
+ * @param str: is the string value that want converted.
+ * @param num: is the dataValue union for store converted data.
+ * @param typr: is the number type for converting.
+ */
+bool stringToNumber(const char* str, dataValueUnion* num, dataTypeEnum type);
 
 /**
  * @brief Check data value in string format for certain data type in string format.
