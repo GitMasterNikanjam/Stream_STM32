@@ -222,17 +222,21 @@ bool Stream_utility::isUInt16(const char* str)
 
 bool Stream_utility::isUInt32(const char* str) 
 {
-    if(isIntiger(str) == false)
+    if (str == nullptr || *str == '\0')  // Ensure non-null and non-empty string
     {
         return false;
     }
 
-    unsigned long value = 0;
-    if (std::sscanf(str, "%lu", &value) == 1 && value <= std::numeric_limits<uint32_t>::max()) 
+    if(isUintiger(str) == false)
     {
-        return true;
+        return false;
     }
-    return false;
+
+    char* endPtr;
+    unsigned long value = std::strtoul(str, &endPtr, 10);
+
+    // Ensure the whole string is processed and within uint32_t range
+    return (*endPtr == '\0' && value <= std::numeric_limits<uint32_t>::max());
 }
 
 bool Stream_utility::isUInt64(const char* str) 
