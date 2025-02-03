@@ -15,6 +15,10 @@
 // ###################################################################################################
 // Data type enumaration and value union :
 
+/**
+ * @enum dataTypeEnum
+ * @brief Enum value for data type. eg: uint8, float, int32, ... .
+ */
 enum dataTypeEnum
 {
     noneType,
@@ -34,6 +38,7 @@ enum dataTypeEnum
 };
 
 /**
+ * @union dataValueUnion
  * @brief Union to store different data types efficiently
  *  */ 
 union dataValueUnion 
@@ -53,7 +58,7 @@ union dataValueUnion
 };
 
 // ####################################################################################################
-// Public General functions
+// Public General functions for Stream_utility namespace:
 
 /**
  * @namespace Stream_utility
@@ -63,11 +68,28 @@ namespace Stream_utility
 {
 
 /**
+ * @brief Manual strnlen() function for Keil
+ *  */ 
+size_t safe_strnlen(const char* str, size_t max_len);
+
+/**
  * @brief Function to trim leading and trailing spaces from a string.
- * @param data is the Input string that wanted to trim
- * @return Trimed string.
+ * @param data: is the Input string that wanted to trim
+ * @param max_size: the maximum length of the data buffer or the maximum length to trim to.
+ * @note - Trimmed string stored in data.
+ * @note - If max_size is 0, it means the maximum size for trimming is disabled.
  */
-void trimString(char* data);
+void trimString(char* data, uint32_t max_size = 0);
+
+/**
+ * @brief Function to trim leading and trailing spaces from a string.
+ * @param data: is the Input string that wanted to trim
+ * @param buffer: is the buffer for store trimmed string.
+ * @param max_size: the maximum length of the data buffer or the maximum length to trim to.
+ * @note - Trimmed string stored in buffer.
+ * @note - If max_size is 0, it means the maximum size for trimming is disabled.
+ */
+void trimString(const char* data, char* buffer, uint32_t max_size = 0);
 
 /**
  * @brief Function to split a string by a delimiter in two section and return a splited strings.
