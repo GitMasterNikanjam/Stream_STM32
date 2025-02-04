@@ -344,7 +344,7 @@ public:
      * @param rxBuffer: Recieve buffer pointer.
      * @param rxBufferSize: Recieve buffer size.
      */
-    Stream(char* txBuffer = nullptr, size_t txBufferSize = 0, char* rxBuffer = nullptr, size_t rxBufferSize = 0);
+    Stream(char* txBuffer = nullptr, uint32_t txBufferSize = 0, char* rxBuffer = nullptr, uint32_t rxBufferSize = 0);
 
     /**
      * Destructor.
@@ -356,24 +356,24 @@ public:
      * @param txBuffer: Transmit buffer pointer.
      * @param txBufferSize: Transmit buffer size.
      */
-    void setTxBuffer(char* txBuffer, size_t txBufferSize);
+    void setTxBuffer(char* txBuffer, uint32_t txBufferSize);
 
     /**
      * @brief Set receive buffer.
      * @param rxBuffer: Recieve buffer pointer.
      * @param rxBufferSize: Recieve buffer size.
      */
-    void setRxBuffer(char* rxBuffer, size_t rxBufferSize);
+    void setRxBuffer(char* rxBuffer, uint32_t rxBufferSize);
     
     /**
-     * @brief Return current TxBuffer size.
+     * @brief Return TxBuffer size.
      */
-    size_t getTxBufferSize();
+    uint32_t getTxBufferSize();
 
     /**
-     * @brief Return currect RxBuffer size.
+     * @brief Return RxBuffer size.
      */
-    size_t getRxBufferSize();
+    uint32_t getRxBufferSize();
 
     /**
      * @brief Return TxBuffer pointer.
@@ -396,18 +396,18 @@ public:
     void clearRxBuffer();
 
     /**
-     * @brief Remove front certain number elements from TX buffer and remove them.
+     * @brief Remove certain number elements from front of TX buffer.
      * @return true if succeeded.
      * @note - Error code be 1 if: "Not enough data in the buffer to remove"
      *  */
-    bool removeFrontTxBuffer(size_t dataSize = 1);
+    bool removeFrontTxBuffer(uint32_t dataSize = 1);
 
     /**
-     * @brief Remove front certain number elements from RX buffer and remove them.
+     * @brief Remove certain number elements from front of RX buffer.
      * @return true if succeeded.
      * @note - Error code be 1 if: "Not enough data in the buffer to remove"
      *  */
-    bool removeFrontRxBuffer(size_t dataSize = 1);
+    bool removeFrontRxBuffer(uint32_t dataSize = 1);
 
     /**
      * @brief Write data Tx buffer.
@@ -415,7 +415,7 @@ public:
      * @return true if succeeded.
      * @note - Error code be 1 if: "Error Stream: Data size exceeds TX buffer size."
      */
-    bool writeTxBuffer(const char* data, size_t dataSize);
+    bool writeTxBuffer(const char* data, uint32_t dataSize);
 
     /**
      * @brief Write data Rx buffer.
@@ -423,7 +423,7 @@ public:
      * @return true if succeeded.
      * @note - Error code be 1 if: "Error Stream: Data size exceeds RX buffer size."
      */
-    bool writeRxBuffer(const char* data, size_t dataSize);
+    bool writeRxBuffer(const char* data, uint32_t dataSize);
 
     /**
      * @brief Push back certain number charecter in to TxBuffer.
@@ -433,7 +433,7 @@ public:
      * @note - Error code be 1 if: "Error Stream: data can not be null."
      * @note - Error code be 2 if: "Error Stream: TX Buffer Overflow"
      */
-    bool pushBackTxBuffer(const char* data, size_t dataSize = 1);
+    bool pushBackTxBuffer(const char* data, uint32_t dataSize = 1);
 
     /**
      * @brief Push back certain number charecter in to TxBuffer.
@@ -452,7 +452,7 @@ public:
      * @note - Error code be 1 if: "Error Stream: data can not be null."
      * @note - Error code be 2 if: "Error Stream: RX Buffer Overflow"
      */
-    bool pushBackRxBuffer(const char* data, size_t dataSize = 1);
+    bool pushBackRxBuffer(const char* data, uint32_t dataSize = 1);
 
     /**
      * @brief Push back certain number charecter in to RxBuffer.
@@ -464,43 +464,43 @@ public:
     bool pushBackRxBuffer(const std::string* data);
 
     /**
-     * @brief Pop front certain number elements from TX buffer and remove them.
+     * @brief Pop certain number elements from front of TX buffer and remove them.
      * @param data is the string that poped front.
      * @return true if succeeded.
      * @note - Error code be 1 if: "Error Stream: data can not be null."
      * @note - Error code be 2 if: "Not enough data in the buffer to pop"
      *  */
-    bool popFrontTxBuffer(std::string* data, size_t dataSize = 1);
+    bool popFrontTxBuffer(std::string* data, uint32_t dataSize = 1);
 
     /**
-     * @brief Pop front certain number elements from TX buffer and remove them.
+     * @brief Pop certain number elements from front of TX buffer and remove them.
      * @param data is the string that poped front.
      * @return true if succeeded.
      * @note - Error code be 1 if: "Error Stream: data can not be null."
      * @note - Error code be 2 if: "Not enough data in the buffer to pop"
      *  */
-    bool popFrontTxBuffer(char* data, size_t dataSize = 1);
+    bool popFrontTxBuffer(char* data, uint32_t dataSize = 1);
 
     /**
-     * @brief Pop front certain number elements from RX buffer and remove them.
+     * @brief Pop certain number elements from front of RX buffer and remove them.
      * @param data is the string that poped front.
      * @return true if succeeded.
      * @note - Error code be 1 if: "Error Stream: data can not be null."
      * @note - Error code be 2 if: "Not enough data in the buffer to pop"
      *  */
-    bool popFrontRxBuffer(std::string* data, size_t dataSize = 1);
+    bool popFrontRxBuffer(std::string* data, uint32_t dataSize = 1);
 
     /**
-     * @brief Pop front certain number elements from RX buffer and remove them.
+     * @brief Pop certain number elements from front RX buffer and remove them.
      * @param data is the string that poped front.
      * @return true if succeeded.
      * @note - Error code be 1 if: "Error Stream: data can not be null."
      * @note - Error code be 2 if: "Not enough data in the buffer to pop"
      *  */
-    bool popFrontRxBuffer(char* data, size_t dataSize = 1);
+    bool popFrontRxBuffer(char* data, uint32_t dataSize = 1);
 
     /**
-     * @brief Pop front all elements from TX buffer and remove them.
+     * @brief Pop all elements from front of TX buffer and remove them.
      * @param data is the string that poped front.
      * @return true if succeeded.
      * @note - Error code be 1 if: "Error Stream: data can not be null."
@@ -508,15 +508,16 @@ public:
     bool popAllTxBuffer(std::string* data);
 
     /**
-     * @brief Pop front all elements from TX buffer and remove them.
-     * @param data is the string that poped front.
+     * @brief Pop all elements from front of TX buffer and remove them.
+     * @param data: is the string that poped front.
+     * @param maxSize: is the max length that can poped from front of buffer.
      * @return true if succeeded.
      * @note - Error code be 1 if: "Error Stream: data can not be null."
      *  */
-    bool popAllTxBuffer(char* data);
+    bool popAllTxBuffer(char* data, uint32_t maxSize);
 
     /**
-     * @brief Pop front all elements from RX buffer and remove them.
+     * @brief Pop all elements from front of RX buffer and remove them.
      * @param data is the string that poped front.
      * @return true if succeeded.
      * @note - Error code be 1 if: "Error Stream: data can not be null."
@@ -524,24 +525,23 @@ public:
     bool popAllRxBuffer(std::string* data);
 
     /**
-     * @brief Pop front all elements from RX buffer and remove them.
-     * @param data is the string that poped front.
+     * @brief Pop all elements from front of RX buffer and remove them.
+     * @param data: is the string that poped front.
+     * @param maxSize: is the max length that can poped from front of buffer.
      * @return true if succeeded.
      * @note - Error code be 1 if: "Error Stream: data can not be null."
      *  */
-    bool popAllRxBuffer(char* data);
+    bool popAllRxBuffer(char* data, uint32_t maxSize);
 
     /**
      * @brief Return data length on TxBuffer.
-     * @return true if succeeded.
      */
-    size_t availableTx();
+    uint32_t availableTx();
 
     /**
      * @brief Return data length on RxBuffer.
-     * @return true if succeeded.
      */
-    size_t availableRx();
+    uint32_t availableRx();
 
 private:
 
@@ -551,17 +551,17 @@ private:
     /// @brief Receive buffer pointer.
     char* _rxBuffer;
 
-    /// @brief Transmit buffer size.
-    size_t _txBufferSize;
+    /// @brief Transmit buffer size. It is fixed value.
+    uint32_t _txBufferSize;
 
-    /// @brief Receive buffer size.
-    size_t _rxBufferSize;
+    /// @brief Receive buffer size. It is fixed value.
+    uint32_t _rxBufferSize;
 
-    /// @brief The last character position in the _txBuffer.
-    size_t _txPosition;
+    /// @brief The last character position + 1 in the _txBuffer. It is number of available character in the TX buffer.
+    uint32_t _txPosition;
 
-    /// @brief The last character position in the _rxBuffer.
-    size_t _rxPosition;
+    /// @brief The last character position + 1 in the _rxBuffer. It is number of available character in the RX buffer.
+    uint32_t _rxPosition;
 };
 
 

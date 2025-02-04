@@ -869,7 +869,7 @@ std::string Stream_utility::dataValueToString(const dataValueUnion& value, const
 // ###########################################################################################################
 // Stream class:
 
-Stream::Stream(char* txBuffer, size_t txBufferSize, char* rxBuffer, size_t rxBufferSize)
+Stream::Stream(char* txBuffer, uint32_t txBufferSize, char* rxBuffer, uint32_t rxBufferSize)
 {
     _txBufferSize = txBufferSize;
     _rxBufferSize = rxBufferSize;
@@ -892,14 +892,14 @@ Stream::~Stream()
 
 }
 
-void Stream::setTxBuffer(char* txBuffer, size_t txBufferSize)
+void Stream::setTxBuffer(char* txBuffer, uint32_t txBufferSize)
 {
     _txBufferSize = txBufferSize;
     _txBuffer = txBuffer;
     _txPosition = 0;
 }
 
-void Stream::setRxBuffer(char* rxBuffer, size_t rxBufferSize)
+void Stream::setRxBuffer(char* rxBuffer, uint32_t rxBufferSize)
 {
     _rxBufferSize = rxBufferSize;
     _rxBuffer = rxBuffer;
@@ -911,7 +911,7 @@ const char* Stream::getTxBuffer()
     return _txBuffer;
 }
 
-size_t Stream::getTxBufferSize() 
+uint32_t Stream::getTxBufferSize() 
 {
     return _txBufferSize;
 }
@@ -921,7 +921,7 @@ const char* Stream::getRxBuffer()
     return _rxBuffer;
 }
 
-size_t Stream::getRxBufferSize() 
+uint32_t Stream::getRxBufferSize() 
 {
     return _rxBufferSize;
 }
@@ -938,7 +938,7 @@ void Stream::clearRxBuffer()
     _rxPosition = 0;
 }
 
-bool Stream::writeTxBuffer(const char* data, size_t dataSize) 
+bool Stream::writeTxBuffer(const char* data, uint32_t dataSize) 
 {
     if (dataSize > _txBufferSize) 
     {
@@ -951,7 +951,7 @@ bool Stream::writeTxBuffer(const char* data, size_t dataSize)
     return true;
 }
 
-bool Stream::writeRxBuffer(const char* data, size_t dataSize) 
+bool Stream::writeRxBuffer(const char* data, uint32_t dataSize) 
 {
     if (dataSize > _rxBufferSize) 
     {
@@ -964,7 +964,7 @@ bool Stream::writeRxBuffer(const char* data, size_t dataSize)
     return true;
 }
 
-bool Stream::pushBackTxBuffer(const char* data, size_t dataSize)
+bool Stream::pushBackTxBuffer(const char* data, uint32_t dataSize)
 {
     if(data == NULL)
     {
@@ -972,43 +972,56 @@ bool Stream::pushBackTxBuffer(const char* data, size_t dataSize)
         return false;
     }
 
-    if(_txPosition + dataSize <= _txBufferSize)
-    {
-        for (size_t i = 0; i < dataSize; ++i) 
-        {
-            _txBuffer[_txPosition] = data[i];
-            ++_txPosition; // Move position forward after writing
-        }
-    }
-    else
-    {
-        errorCode = 2;   // "Error Stream: TX Buffer Overflow";
-        return false;  
-    }
+    bool ret = true;
 
-    return true;
-}
-
-bool Stream::pushBackRxBuffer(const char* data, size_t dataSize)
-{
-    if(data == NULL)
-    {
-        errorCode = 1;  // "Error Stream: data can not be null.";
-        return false;
-    }
+    // empty space size of tx buffer.
+    int64_t emptySize;
+    emptySize = (int64_t)getTxBufferSize() - (int64_t)availableTx() - 1;
 
     // Check for buffer overflow
-    if (_rxPosition + dataSize > _rxBufferSize) 
+    if (emptySize < dataSize)    
+    {
+        errorCode = 2; // "TX Buffer Overflow."
+        ret = false;
+        removeFrontTxBuffer(dataSize - emptySize);
+    }
+
+    // Copy the data into the buffer
+    std::memcpy(&_txBuffer[_txPosition], data, dataSize);
+    _txPosition += dataSize; // Update the position
+
+    return ret;
+}
+
+bool Stream::pushBackRxBuffer(const char* data, uint32_t dataSize)
+{
+    if(data == NULL)
+    {
+        errorCode = 1;  // "Error Stream: data can not be null.";
+        return false;
+    }
+
+    bool ret = true;
+
+    // empty space size of rx buffer.
+    int64_t emptySize;
+    emptySize = (int64_t)(getRxBufferSize() -1) - (int64_t)availableRx();
+
+    // Check for buffer overflow
+    if (emptySize < dataSize)    
     {
         errorCode = 2; // "RX Buffer Overflow."
-        return false;
+        ret = false;
+        removeFrontRxBuffer(dataSize - emptySize);
     }
 
     // Copy the data into the buffer
     std::memcpy(&_rxBuffer[_rxPosition], data, dataSize);
     _rxPosition += dataSize; // Update the position
 
-    return true;
+    _rxBuffer[_rxPosition] = '\0';
+
+    return ret;
 }
 
 bool Stream::pushBackTxBuffer(const std::string* data)
@@ -1021,7 +1034,7 @@ bool Stream::pushBackRxBuffer(const std::string* data)
     return pushBackRxBuffer(data->c_str(), data->size());
 }
 
-bool Stream::popFrontTxBuffer(char* data, size_t dataSize)
+bool Stream::popFrontTxBuffer(char* data, uint32_t dataSize)
 {
     if(data == nullptr)
     {
@@ -1029,10 +1042,13 @@ bool Stream::popFrontTxBuffer(char* data, size_t dataSize)
         return false;
     }
 
+    bool ret = true;
+
     if (dataSize > _txPosition) 
     {
+        dataSize = _txPosition;
         errorCode = 2; // Not enough data in the buffer to pop
-        return false;
+        ret = false;
     }
 
     // Copy the data to the output buffer
@@ -1047,10 +1063,10 @@ bool Stream::popFrontTxBuffer(char* data, size_t dataSize)
     // Null-terminate the remaining buffer (optional for string usage)
     _txBuffer[_txPosition] = '\0';
 
-    return true;
+    return ret;
 }
 
-bool Stream::removeFrontTxBuffer(size_t dataSize)
+bool Stream::removeFrontTxBuffer(uint32_t dataSize)
 {
     if (dataSize > _txPosition) 
     {
@@ -1070,7 +1086,7 @@ bool Stream::removeFrontTxBuffer(size_t dataSize)
     return true;
 }
 
-bool Stream::removeFrontRxBuffer(size_t dataSize)
+bool Stream::removeFrontRxBuffer(uint32_t dataSize)
 {
     if (dataSize > _rxPosition) 
     {
@@ -1090,7 +1106,7 @@ bool Stream::removeFrontRxBuffer(size_t dataSize)
     return true;
 }
 
-bool Stream::popFrontTxBuffer(std::string* data, size_t dataSize)
+bool Stream::popFrontTxBuffer(std::string* data, uint32_t dataSize)
 {
     if(data == nullptr)
     {
@@ -1119,9 +1135,9 @@ bool Stream::popFrontTxBuffer(std::string* data, size_t dataSize)
     return true;
 }
 
-bool Stream::popAllTxBuffer(char* data)
+bool Stream::popAllTxBuffer(char* data, uint32_t maxSize)
 {
-    return popFrontTxBuffer(data, _txPosition);
+    return popFrontTxBuffer(data, maxSize);
 }
 
 bool Stream::popAllTxBuffer(std::string* data)
@@ -1129,7 +1145,7 @@ bool Stream::popAllTxBuffer(std::string* data)
     return popFrontTxBuffer(data, _txPosition);
 }
 
-bool Stream::popFrontRxBuffer(char* data, size_t dataSize)
+bool Stream::popFrontRxBuffer(char* data, uint32_t dataSize)
 {
     if(data == nullptr)
     {
@@ -1137,16 +1153,19 @@ bool Stream::popFrontRxBuffer(char* data, size_t dataSize)
         return false;
     }
 
+    bool ret = true;
+
     if (dataSize == 0) 
     {
         errorCode = 3; // "Error: Data size cannot be zero."
-        return false;
+        ret = false;
     }
 
     if (dataSize > _rxPosition) 
     {
         errorCode = 2; // Not enough data in the buffer to pop
-        return false;
+        dataSize = _rxPosition;
+        ret = false;
     }
 
     // Copy the data to the output buffer
@@ -1161,10 +1180,10 @@ bool Stream::popFrontRxBuffer(char* data, size_t dataSize)
     // Null-terminate the remaining buffer (optional for string usage)
     _rxBuffer[_rxPosition] = '\0';
 
-    return true;
+    return ret;
 }
 
-bool Stream::popFrontRxBuffer(std::string* data, size_t dataSize)
+bool Stream::popFrontRxBuffer(std::string* data, uint32_t dataSize)
 {
     if(data == nullptr)
     {
@@ -1172,10 +1191,13 @@ bool Stream::popFrontRxBuffer(std::string* data, size_t dataSize)
         return false;
     }
 
+    bool ret = true;
+
     if (dataSize > _rxPosition) 
     {
         errorCode = 2;// Not enough data in the buffer to pop
-        return false;
+        dataSize = _rxPosition;
+        ret = false;
     }
 
     // Assign the requested portion of data to the std::string
@@ -1190,12 +1212,12 @@ bool Stream::popFrontRxBuffer(std::string* data, size_t dataSize)
     // Null-terminate the remaining buffer (optional for safety if treated as a string)
     _rxBuffer[_rxPosition] = '\0';
 
-    return true;
+    return ret;
 }
 
-bool Stream::popAllRxBuffer(char* data)
+bool Stream::popAllRxBuffer(char* data, uint32_t maxSize)
 {
-    return popFrontRxBuffer(data, _rxPosition);
+    return popFrontRxBuffer(data, maxSize);
 }
 
 bool Stream::popAllRxBuffer(std::string* data)
@@ -1203,13 +1225,13 @@ bool Stream::popAllRxBuffer(std::string* data)
     return popFrontRxBuffer(data, _rxPosition);
 }
 
-size_t Stream::availableTx() 
+uint32_t Stream::availableTx() 
 {
     // return strlen(_txBuffer);
     return _txPosition;
 }
 
-size_t Stream::availableRx() 
+uint32_t Stream::availableRx() 
 {
     // return strlen(_rxBuffer);
     return _rxPosition;
