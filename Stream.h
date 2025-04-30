@@ -321,6 +321,9 @@ bool checkValueType(const char *data, const dataTypeEnum type);
 /// @brief Helper function to convert dataValueUnion to string based on ParamType_t
 std::string dataValueToString(const dataValueUnion& value, const dataTypeEnum type);
 
+/// @brief Helper function to convert dataValueUnion to string based on ParamType_t
+void dataValueToString(char *str, const dataValueUnion& value, const dataTypeEnum type);
+
 }
 
 // ######################################################################################################

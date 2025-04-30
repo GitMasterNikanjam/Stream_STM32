@@ -866,6 +866,53 @@ std::string Stream_utility::dataValueToString(const dataValueUnion& value, const
     }
 }
 
+void Stream_utility::dataValueToString(char *str, const dataValueUnion& value, const dataTypeEnum type)
+{
+    switch (type)
+    {
+        case uint8Type:
+            sprintf(str, "%u", value.uint8Value);
+            break;
+        case uint16Type:
+            sprintf(str, "%u", value.uint16Value);
+            break;
+        case uint32Type:
+            sprintf(str, "%u", value.uint32Value);
+            break;
+        case int8Type:
+            sprintf(str, "%d", value.int8Value);
+            break;
+        case int16Type:
+            sprintf(str, "%d", value.int16Value);
+            break;
+        case int32Type:
+            sprintf(str, "%d", value.int32Value);
+            break;
+        case floatType:
+            sprintf(str, "%f", value.floatValue);
+            break;
+        case doubleType:
+            sprintf(str, "%f", value.doubleValue);
+            break;
+        case boolType:
+            if(value.boolValue == true)
+            {
+                sprintf(str, "true");
+            }
+            else
+            {
+                sprintf(str, "false");
+            }
+            break;
+        case stringType:
+            sprintf(str, "%s", value.stringValue);
+            break;
+        default:
+            sprintf(str, "Unsupported Type");
+            break;
+    }
+}
+
 // ###########################################################################################################
 // Stream class:
 
