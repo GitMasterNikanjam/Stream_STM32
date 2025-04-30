@@ -502,19 +502,21 @@ bool Stream_utility::stringToUint32(const char* str, uint32_t* num)
         return false;
     }
 
-    // Use sscanf to convert the string to an integer
-    unsigned int temp;
-    if (std::sscanf(str, "%u", &temp) != 1) 
+    char* end;
+    uint32_t value = static_cast<uint32_t>(strtoul(str, &end, 10));
+    if (*end != '\0') 
     {
-        return false; // sscanf failed to parse a valid integer
+        // Invalid characters in input
+        return false;
     }
 
-    // Check if the value fits within the uint16_t range
-    if (temp > 4294967295) {
+    // Check if the value fits within the uint32_t range
+    if (value > 4294967295) 
+    {
         return false; // The value is out of range for uint8_t
     }
 
-    *num = (uint32_t)(temp); // Successfully convert to uint8_t
+    *num = (uint32_t)(value); // Successfully convert to uint8_t
     
     return true;   
 }
@@ -525,13 +527,17 @@ bool Stream_utility::stringToUint64(const char* str, uint64_t* num)
     {
         return false;
     }
-
-    // Use sscanf to convert the string to an integer
-    if (std::sscanf(str, "%llu", num) != 1) 
-    {
-        return false; // sscanf failed to parse a valid integer
-    }
     
+    char* end;
+    uint64_t value = static_cast<uint64_t>(strtoull(str, &end, 10));
+    if (*end != '\0') 
+    {
+        // Invalid characters in input
+        return false;
+    }
+
+    *num = value;
+
     return true;   
 }
 
@@ -542,19 +548,20 @@ bool Stream_utility::stringToInt8(const char* str, int8_t* num)
         return false;
     }
 
-    // Use sscanf to convert the string to an integer
-    int temp;
-    if (std::sscanf(str, "%d", &temp) != 1) 
+    char* end;
+    int32_t value = static_cast<int32_t>(strtol(str, &end, 10));
+    if (*end != '\0') 
     {
-        return false; // sscanf failed to parse a valid integer
+        // Invalid characters in input
+        return false;
     }
 
     // Check if the value fits within the int8_t range (-128 to 127)
-    if (temp < -128 || temp > 127) {
+    if (value < -128 || value > 127) {
         return false; // The value is out of range for int8_t
     }
 
-    *num = (int8_t)(temp); // Successfully convert to int8_t
+    *num = (int8_t)(value); // Successfully convert to int8_t
     
     return true;
 }
@@ -566,19 +573,20 @@ bool Stream_utility::stringToInt16(const char* str, int16_t* num)
         return false;
     }
 
-    // Use sscanf to convert the string to an integer
-    int temp;
-    if (std::sscanf(str, "%d", &temp) != 1) 
+    char* end;
+    int32_t value = static_cast<int32_t>(strtol(str, &end, 10));
+    if (*end != '\0') 
     {
-        return false; // sscanf failed to parse a valid integer
+        // Invalid characters in input
+        return false;
     }
 
     // Check if the value fits within the int16_t range (-32768 to 32767)
-    if (temp < -32768 || temp > 32767) {
+    if (value < -32768 || value > 32767) {
         return false; // The value is out of range for int16_t
     }
 
-    *num = (int16_t)(temp); // Successfully convert to int16_t
+    *num = (int16_t)(value); // Successfully convert to int16_t
     
     return true;
 }
@@ -590,11 +598,15 @@ bool Stream_utility::stringToInt32(const char* str, int32_t* num)
         return false;
     }
 
-    // Use sscanf to convert the string to an integer
-    if (std::sscanf(str, "%d", num) != 1) 
+    char* end;
+    int32_t value = static_cast<int32_t>(strtol(str, &end, 10));
+    if (*end != '\0') 
     {
-        return false; // sscanf failed to parse a valid integer
+        // Invalid characters in input
+        return false;
     }
+
+    *num = value;
 
     return true;
 }
@@ -606,11 +618,15 @@ bool Stream_utility::stringToInt64(const char* str, int64_t* num)
         return false;
     }
 
-    // Use sscanf to convert the string to an integer
-    if (std::sscanf(str, "%lld", num) != 1) 
+    char* end;
+    int64_t value = static_cast<int64_t>(strtoll(str, &end, 10));
+    if (*end != '\0') 
     {
-        return false; // sscanf failed to parse a valid integer
+        // Invalid characters in input
+        return false;
     }
+
+    *num = value;
 
     return true;
 }
@@ -622,14 +638,15 @@ bool Stream_utility::stringToFloat(const char* str, float* num)
         return false;
     }
 
-    // Use sscanf to convert the string to an integer
-    float temp;
-    if (std::sscanf(str, "%f", &temp) != 1) 
+    char* end;
+    float value = static_cast<float>(strtof(str, &end));
+    if (*end != '\0') 
     {
-        return false; // sscanf failed to parse a valid integer
+        // Invalid characters in input
+        return false;
     }
 
-    *num = temp;
+    *num = value;
     return true;
 }
 
@@ -640,11 +657,15 @@ bool Stream_utility::stringToDouble(const char* str, double* num)
         return false;
     }
 
-    // Use sscanf to convert the string to an integer
-    if (std::sscanf(str, "%lf", num) != 1) 
+    char* end;
+    double value = static_cast<double>(strtod(str, &end));
+    if (*end != '\0') 
     {
-        return false; // sscanf failed to parse a valid integer
+        // Invalid characters in input
+        return false;
     }
+
+    *num = value;
 
     return true;
 }
