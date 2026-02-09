@@ -24,12 +24,15 @@ void Stream_utility::trimString(char* data, uint32_t max_size)
         return;  // If the input is null or empty, nothing to trim
     }
 
-    uint32_t len;
+    uint32_t len = 0;
 
     if(max_size != 0)
     {
-        // Ensure null termination
+        // If max_size==0 means "unknown", keep this branch guarded.
+        // Ensure there is a terminator inside the buffer window.
         data[max_size - 1] = '\0';
+
+        // bounded strlen
         len = safe_strnlen(data, max_size);
     }
     else
@@ -39,29 +42,31 @@ void Stream_utility::trimString(char* data, uint32_t max_size)
 
     uint32_t start = 0;
     
-    int32_t end = len - 1;  // Find the end of the string. Use signed index to avoid underflow
+    int32_t end = (int32_t)len - 1;  // Find the end of the string. Use signed index to avoid underflow
 
     // Trim leading whitespace
-    while (start <= end && std::isspace(static_cast<unsigned char>(data[start]))) 
+    while (start <= (uint32_t)end && std::isspace(static_cast<unsigned char>(data[start]))) 
     {
         ++start;
     }
 
     // If there's nothing left after trimming leading spaces, empty the string
-    if (start > end) {
+    if (start > (uint32_t)end) {
         data[0] = '\0';  // Empty string
         return;
     }
 
     // Trim trailing whitespace
-    while (end >= start && std::isspace(static_cast<unsigned char>(data[end]))) 
+    while (end >= (int32_t)start && std::isspace(static_cast<unsigned char>(data[end]))) 
     {
         --end;
     }
 
+    uint32_t new_len = (uint32_t)(end - (int32_t)start + 1);
+
     // Shift characters and null-terminate. Move trimmed string to the start manually to avoid `memmove`
     std::strcpy(data, data + start);  
-    data[end - start + 1] = '\0';  // Null-terminate the string
+    data[new_len] = '\0';  // Null-terminate the string
 }
 
 void Stream_utility::trimString(const char* data, char* buffer, uint32_t max_size)
