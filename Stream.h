@@ -6,7 +6,11 @@
 #include <cstring>  // Provides functions for manipulating C-style strings (e.g., strcpy(), strlen(), strcat()).
 #include <cstdio>   // Includes functions for input/output operations, such as formatted string printing (printf(), sprintf()).
 #include <cstdint>  // Defines fixed-width integer types (int32_t, uint64_t, etc.) and limits for platform-independent integer handling.
-#include <string>   // Provides the std::string class for working with dynamic strings in C++
+#include <cstddef>
+
+#if defined(__linux__)
+    #include <string>   // Provides the std::string class for working with dynamic strings in C++
+#endif
 
 // ###################################################################################################
 // Define global macros:
@@ -97,7 +101,7 @@ void trimString(const char* data, char* buffer, uint32_t max_size = 0);
  * @param secondSection is the second part of splited string.
  * @return true if splited succeeded.
  */
-bool splitString(const char* data, char delimiter, char* firstSection = nullptr, char* secondSection = nullptr);
+bool splitString(const char* data, char delimiter, char* firstSection = nullptr, size_t firstSize = 0, char* secondSection = nullptr, size_t secondSize = 0);
 
 /**
  * @brief Function to check if a string is empty or contains only spaces.
@@ -318,8 +322,10 @@ bool checkValueType(const char *data, const char *type);
  *  */ 
 bool checkValueType(const char *data, const dataTypeEnum type);
 
-/// @brief Helper function to convert dataValueUnion to string based on ParamType_t
-std::string dataValueToString(const dataValueUnion& value, const dataTypeEnum type);
+#if defined(__linux__)
+    /// @brief Helper function to convert dataValueUnion to string based on ParamType_t
+    std::string dataValueToString(const dataValueUnion& value, const dataTypeEnum type);
+#endif
 
 /// @brief Helper function to convert dataValueUnion to string based on ParamType_t
 void dataValueToString(char *str, const dataValueUnion& value, const dataTypeEnum type);
@@ -338,7 +344,7 @@ class Stream
 public:
 
     /// @brief Last error code number occurred for the object.
-    int8_t errorCode;
+    int8_t errorCode = 0;
 
     /**
      * @brief Constructor. Init some variables and parameters. Init TX/RX buffers.
@@ -350,9 +356,22 @@ public:
     Stream(char* txBuffer = nullptr, uint32_t txBufferSize = 0, char* rxBuffer = nullptr, uint32_t rxBufferSize = 0);
 
     /**
-     * Destructor.
+     * Destructor. Non-owning: destructor does NOT free buffers.
      */
-    ~Stream();
+    ~Stream() = default;
+
+    /**
+     * @brief Prevent accidental shallow copy (common bug on embedded projects). 
+     * @note ❌ “You are NOT allowed to copy a Stream object.”
+     */
+    Stream(const Stream&) = delete;
+    Stream& operator=(const Stream&) = delete;
+
+    /**
+     * @brief Delete move. Keep it simple and safe.
+     */
+    Stream(Stream&&) = delete;
+    Stream& operator=(Stream&&) = delete;
 
     /**
      * @brief Set transmit buffer.
@@ -371,22 +390,22 @@ public:
     /**
      * @brief Return TxBuffer size.
      */
-    uint32_t getTxBufferSize();
+    uint32_t getTxBufferSize() const;
 
     /**
      * @brief Return RxBuffer size.
      */
-    uint32_t getRxBufferSize();
+    uint32_t getRxBufferSize() const;
 
     /**
      * @brief Return TxBuffer pointer.
      */
-    const char* getTxBuffer();
+    const char* getTxBuffer() const;
     
     /**
      * @brief Return RxBuffer pointer.
      */
-    const char* getRxBuffer();
+    const char* getRxBuffer() const;
 
     /**
      * @brief Clear all data on the TxBuffer.
@@ -438,14 +457,16 @@ public:
      */
     bool pushBackTxBuffer(const char* data, uint32_t dataSize = 1);
 
-    /**
-     * @brief Push back certain number charecter in to TxBuffer.
-     * @param data is a string pointer that you want to push back.
-     * @return true if succeeded.
-     * @note - Error code be 1 if: "Error Stream: data can not be null."
-     * @note - Error code be 2 if: "Error Stream: TX Buffer Overflow"
-     */
-    bool pushBackTxBuffer(const std::string* data);
+    #if defined(__linux__)
+        /**
+         * @brief Push back certain number charecter in to TxBuffer.
+         * @param data is a string pointer that you want to push back.
+         * @return true if succeeded.
+         * @note - Error code be 1 if: "Error Stream: data can not be null."
+         * @note - Error code be 2 if: "Error Stream: TX Buffer Overflow"
+         */
+        bool pushBackTxBuffer(const std::string& data);
+    #endif
 
     /**
      * @brief Push back certain number charecter in to RxBuffer.
@@ -457,23 +478,25 @@ public:
      */
     bool pushBackRxBuffer(const char* data, uint32_t dataSize = 1);
 
-    /**
-     * @brief Push back certain number charecter in to RxBuffer.
-     * @param data is a string pointer that you want to push back.
-     * @return true if succeeded.
-     * @note - Error code be 1 if: "Error Stream: data can not be null."
-     * @note - Error code be 2 if: "Error Stream: RX Buffer Overflow"
-     */
-    bool pushBackRxBuffer(const std::string* data);
+    #if defined(__linux__)
+        /**
+         * @brief Push back certain number charecter in to RxBuffer.
+         * @param data is a string pointer that you want to push back.
+         * @return true if succeeded.
+         * @note - Error code be 1 if: "Error Stream: data can not be null."
+         * @note - Error code be 2 if: "Error Stream: RX Buffer Overflow"
+         */
+        bool pushBackRxBuffer(const std::string& data);
 
-    /**
-     * @brief Pop certain number elements from front of TX buffer and remove them.
-     * @param data is the string that poped front.
-     * @return true if succeeded.
-     * @note - Error code be 1 if: "Error Stream: data can not be null."
-     * @note - Error code be 2 if: "Not enough data in the buffer to pop"
-     *  */
-    bool popFrontTxBuffer(std::string* data, uint32_t dataSize = 1);
+        /**
+         * @brief Pop certain number elements from front of TX buffer and remove them.
+         * @param data is the string that poped front.
+         * @return true if succeeded.
+         * @note - Error code be 1 if: "Error Stream: data can not be null."
+         * @note - Error code be 2 if: "Not enough data in the buffer to pop"
+         *  */
+        bool popFrontTxBuffer(std::string& data, uint32_t dataSize = 1);
+    #endif
 
     /**
      * @brief Pop certain number elements from front of TX buffer and remove them.
@@ -484,14 +507,16 @@ public:
      *  */
     bool popFrontTxBuffer(char* data, uint32_t dataSize = 1);
 
-    /**
-     * @brief Pop certain number elements from front of RX buffer and remove them.
-     * @param data is the string that poped front.
-     * @return true if succeeded.
-     * @note - Error code be 1 if: "Error Stream: data can not be null."
-     * @note - Error code be 2 if: "Not enough data in the buffer to pop"
-     *  */
-    bool popFrontRxBuffer(std::string* data, uint32_t dataSize = 1);
+    #if defined(__linux__)
+        /**
+         * @brief Pop certain number elements from front of RX buffer and remove them.
+         * @param data is the string that poped front.
+         * @return true if succeeded.
+         * @note - Error code be 1 if: "Error Stream: data can not be null."
+         * @note - Error code be 2 if: "Not enough data in the buffer to pop"
+         *  */
+        bool popFrontRxBuffer(std::string& data, uint32_t dataSize = 1);
+    #endif
 
     /**
      * @brief Pop certain number elements from front RX buffer and remove them.
@@ -502,13 +527,15 @@ public:
      *  */
     bool popFrontRxBuffer(char* data, uint32_t dataSize = 1);
 
-    /**
-     * @brief Pop all elements from front of TX buffer and remove them.
-     * @param data is the string that poped front.
-     * @return true if succeeded.
-     * @note - Error code be 1 if: "Error Stream: data can not be null."
-     *  */
-    bool popAllTxBuffer(std::string* data);
+    #if defined(__linux__)
+        /**
+         * @brief Pop all elements from front of TX buffer and remove them.
+         * @param data is the string that poped front.
+         * @return true if succeeded.
+         * @note - Error code be 1 if: "Error Stream: data can not be null."
+         *  */
+        bool popAllTxBuffer(std::string& data);
+    #endif
 
     /**
      * @brief Pop all elements from front of TX buffer and remove them.
@@ -519,13 +546,15 @@ public:
      *  */
     bool popAllTxBuffer(char* data, uint32_t maxSize);
 
-    /**
-     * @brief Pop all elements from front of RX buffer and remove them.
-     * @param data is the string that poped front.
-     * @return true if succeeded.
-     * @note - Error code be 1 if: "Error Stream: data can not be null."
-     *  */
-    bool popAllRxBuffer(std::string* data);
+    #if defined(__linux__)
+        /**
+         * @brief Pop all elements from front of RX buffer and remove them.
+         * @param data is the string that poped front.
+         * @return true if succeeded.
+         * @note - Error code be 1 if: "Error Stream: data can not be null."
+         *  */
+        bool popAllRxBuffer(std::string& data);
+    #endif
 
     /**
      * @brief Pop all elements from front of RX buffer and remove them.
@@ -539,32 +568,32 @@ public:
     /**
      * @brief Return data length on TxBuffer.
      */
-    uint32_t availableTx();
+    uint32_t availableTx() const;
 
     /**
      * @brief Return data length on RxBuffer.
      */
-    uint32_t availableRx();
+    uint32_t availableRx() const;
 
 private:
 
     /// @brief Transmit buffer pointer.
-    char* _txBuffer;
+    char* _txBuffer = nullptr;
 
     /// @brief Receive buffer pointer.
-    char* _rxBuffer;
+    char* _rxBuffer = nullptr;
 
     /// @brief Transmit buffer size. It is fixed value.
-    uint32_t _txBufferSize;
+    uint32_t _txBufferSize = 0;
 
     /// @brief Receive buffer size. It is fixed value.
-    uint32_t _rxBufferSize;
+    uint32_t _rxBufferSize = 0;
 
     /// @brief The last character position + 1 in the _txBuffer. It is number of available character in the TX buffer.
-    uint32_t _txPosition;
+    uint32_t _txPosition = 0;
 
     /// @brief The last character position + 1 in the _rxBuffer. It is number of available character in the RX buffer.
-    uint32_t _rxPosition;
+    uint32_t _rxPosition = 0;
 };
 
 

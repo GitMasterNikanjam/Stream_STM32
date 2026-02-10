@@ -2,6 +2,9 @@
 // Include libraries:
 
 #include "Stream.h"
+#include <cctype>
+#include <limits>
+#include <cstdlib>
 
 // #####################################################################################################
 // Public General functions
@@ -123,7 +126,7 @@ void Stream_utility::trimString(const char* data, char* buffer, uint32_t max_siz
     buffer[end - start + 1] = '\0';  // Null-terminate the string
 }
 
-bool Stream_utility::splitString(const char* data, char delimiter, char* firstSection, char* secondSection) 
+bool Stream_utility::splitString(const char* data, char delimiter, char* firstSection, size_t firstSize, char* secondSection, size_t secondSize) 
 {
     if (data == nullptr) 
     {
@@ -138,19 +141,26 @@ bool Stream_utility::splitString(const char* data, char delimiter, char* firstSe
         return false;
     }
 
-    // Copy the first section (everything before the delimiter)
     size_t firstLength = delimiterPos - data;
+    const char* secondStart = delimiterPos + 1;
+    size_t secondLength = std::strlen(secondStart);
+
     if(firstSection != nullptr)
     {
-        std::strncpy(firstSection, data, firstLength);
-        firstSection[firstLength] = '\0';  // Null-terminate the string
+        if (firstLength + 1 > firstSize)
+            return false;
+
+        std::memcpy(firstSection, data, firstLength);
+        firstSection[firstLength] = '\0';       // Null-terminate the string
     }
-    
-    // Copy the second section (everything after the delimiter)
-    const char* secondStart = delimiterPos + 1;
+
     if(secondSection != nullptr)
     {
-        std::strcpy(secondSection, secondStart);
+        if (secondLength + 1 > secondSize)
+            return false;
+
+
+        std::memcpy(secondSection, secondStart, secondLength + 1);
     }
     
     return true;
@@ -171,28 +181,36 @@ bool Stream_utility::isWhitespaceOnly(const char* str)
 
 bool Stream_utility::validateRow(const char* data, size_t expectedColumnCount) 
 {
-    char* fields = new char[strlen(data) + 1];
-    char* firstSection;
+    if (!data || expectedColumnCount == 0 || *data == '\0')
+        return false;
 
-    strcpy(fields, data);
+    const size_t n = std::strlen(data);
+    char* fields = new char[n + 1];
+    std::strcpy(fields, data);
 
-    size_t fieldCount = 0;
-    
-    while(Stream_utility::splitString(fields, ',', firstSection, fields) == true)
+    size_t fieldCount = 1;      // number of columns = commas+1
+
+    char* cursor = fields;
+
+    while (true)
     {
-        if(isWhitespaceOnly(firstSection) || isWhitespaceOnly(fields))
-        {
-            return false;
-        }
+        char* comma = std::strchr(cursor, ',');
+        if (!comma) break;
+
+        *comma = '\0';
+
+        trimString(cursor);
+        if (isWhitespaceOnly(cursor)) { delete[] fields; return false; }
+
         fieldCount++;
+        cursor = comma + 1;
     }
 
-    if (fieldCount != (expectedColumnCount -1)) 
-    {
-        return false; // Incorrect number of columns
-    }
+    trimString(cursor);
+    if (isWhitespaceOnly(cursor)) { delete[] fields; return false; }
 
-    return true;
+    delete[] fields;
+    return (fieldCount == expectedColumnCount);
 }
 
 bool Stream_utility::isUInt8(const char* str) 
@@ -238,7 +256,7 @@ bool Stream_utility::isUInt32(const char* str)
     }
 
     char* endPtr;
-    unsigned long value = std::strtoul(str, &endPtr, 10);
+    unsigned long value = strtoul(str, &endPtr, 10);
 
     // Ensure the whole string is processed and within uint32_t range
     return (*endPtr == '\0' && value <= std::numeric_limits<uint32_t>::max());
@@ -742,10 +760,10 @@ bool Stream_utility::stringToNumber(const char* str, dataValueUnion* num, dataTy
         break;
         case boolType:
             // Compare using std::strcmp instead of == for string content comparison
-            num->boolValue = (std::string(str) == "true" || std::string(str) == "1");
+            num->boolValue = (std::strcmp(str, "true") == 0 || std::strcmp(str, "TRUE") == 0 || std::strcmp(str, "1") == 0);
         break;
         case stringType:
-            std::strncpy(num->stringValue, str, sizeof(&num->stringValue) - 1);
+            std::strncpy(num->stringValue, str, sizeof(num->stringValue) - 1);
             num->stringValue[sizeof(num->stringValue) - 1] = '\0';  // Ensure null termination
         break;
         default:
@@ -863,34 +881,36 @@ bool Stream_utility::checkValueType(const char *data, dataTypeEnum type)
     return true;
 }
 
-std::string Stream_utility::dataValueToString(const dataValueUnion& value, const dataTypeEnum type)
-{
-    switch (type)
+#if defined(__linux__)
+    std::string Stream_utility::dataValueToString(const dataValueUnion& value, const dataTypeEnum type)
     {
-        case uint8Type:
-            return std::to_string(value.uint8Value);
-        case uint16Type:
-            return std::to_string(value.uint16Value);
-        case uint32Type:
-            return std::to_string(value.uint32Value);
-        case int8Type:
-            return std::to_string(value.int8Value);
-        case int16Type:
-            return std::to_string(value.int16Value);
-        case int32Type:
-            return std::to_string(value.int32Value);
-        case floatType:
-            return std::to_string(value.floatValue);
-        case doubleType:
-            return std::to_string(value.doubleValue);
-        case boolType:
-            return value.boolValue ? "true" : "false";
-        case stringType:
-            return std::string(value.stringValue);
-        default:
-            return "Unsupported Type";
+        switch (type)
+        {
+            case uint8Type:
+                return std::to_string(value.uint8Value);
+            case uint16Type:
+                return std::to_string(value.uint16Value);
+            case uint32Type:
+                return std::to_string(value.uint32Value);
+            case int8Type:
+                return std::to_string(value.int8Value);
+            case int16Type:
+                return std::to_string(value.int16Value);
+            case int32Type:
+                return std::to_string(value.int32Value);
+            case floatType:
+                return std::to_string(value.floatValue);
+            case doubleType:
+                return std::to_string(value.doubleValue);
+            case boolType:
+                return value.boolValue ? "true" : "false";
+            case stringType:
+                return std::string(value.stringValue);
+            default:
+                return "Unsupported Type";
+        }
     }
-}
+#endif
 
 void Stream_utility::dataValueToString(char *str, const dataValueUnion& value, const dataTypeEnum type)
 {
@@ -954,15 +974,10 @@ Stream::Stream(char* txBuffer, uint32_t txBufferSize, char* rxBuffer, uint32_t r
     _rxPosition = 0;
 
     // Null-terminate the remaining buffer (optional for string usage)
-    memset(_txBuffer, '\0', _txBufferSize);
-    memset(_rxBuffer, '\0', _rxBufferSize);
+    if (_txBuffer && _txBufferSize) memset(_txBuffer, 0, _txBufferSize);
+    if (_rxBuffer && _rxBufferSize) memset(_rxBuffer, 0, _rxBufferSize);
 
     errorCode = 0;
-}
-
-Stream::~Stream()
-{
-
 }
 
 void Stream::setTxBuffer(char* txBuffer, uint32_t txBufferSize)
@@ -979,22 +994,22 @@ void Stream::setRxBuffer(char* rxBuffer, uint32_t rxBufferSize)
     _rxPosition = 0;
 }
 
-const char* Stream::getTxBuffer() 
+const char* Stream::getTxBuffer() const
 {
     return _txBuffer;
 }
 
-uint32_t Stream::getTxBufferSize() 
+uint32_t Stream::getTxBufferSize() const
 {
     return _txBufferSize;
 }
 
-const char* Stream::getRxBuffer() 
+const char* Stream::getRxBuffer() const
 {
     return _rxBuffer;
 }
 
-uint32_t Stream::getRxBufferSize() 
+uint32_t Stream::getRxBufferSize() const
 {
     return _rxBufferSize;
 }
@@ -1097,15 +1112,17 @@ bool Stream::pushBackRxBuffer(const char* data, uint32_t dataSize)
     return ret;
 }
 
-bool Stream::pushBackTxBuffer(const std::string* data)
-{
-    return pushBackTxBuffer(data->c_str(), data->size());
-}
+#if defined(__linux__)
+    bool Stream::pushBackTxBuffer(const std::string& data)
+    {
+        return pushBackTxBuffer(data.c_str(), data->size());
+    }
 
-bool Stream::pushBackRxBuffer(const std::string* data)
-{
-    return pushBackRxBuffer(data->c_str(), data->size());
-}
+    bool Stream::pushBackRxBuffer(const std::string& data)
+    {
+        return pushBackRxBuffer(data.c_str(), data->size());
+    }
+#endif
 
 bool Stream::popFrontTxBuffer(char* data, uint32_t dataSize)
 {
@@ -1179,44 +1196,42 @@ bool Stream::removeFrontRxBuffer(uint32_t dataSize)
     return true;
 }
 
-bool Stream::popFrontTxBuffer(std::string* data, uint32_t dataSize)
-{
-    if(data == nullptr)
+#if defined(__linux__)
+    bool Stream::popFrontTxBuffer(std::string& data, uint32_t dataSize)
     {
-        errorCode = 1;
-        return false;
+        if (dataSize > _txPosition) 
+        {
+            errorCode = 2; // Not enough data in the buffer to pop
+            return false;
+        }
+
+        // Assign the requested portion of data to the std::string
+        data.assign(_txBuffer, dataSize);
+
+        // Shift the remaining data in the TX buffer
+        std::memmove(_txBuffer, _txBuffer + dataSize, _txPosition - dataSize);
+
+        // Update the TX buffer position
+        _txPosition -= dataSize;
+
+        // Null-terminate the remaining buffer (optional for safety if treated as a string)
+        _txBuffer[_txPosition] = '\0';
+
+        return true;
     }
-
-    if (dataSize > _txPosition) 
-    {
-        errorCode = 2; // Not enough data in the buffer to pop
-        return false;
-    }
-
-    // Assign the requested portion of data to the std::string
-    *data = std::string(_txBuffer, dataSize);
-
-    // Shift the remaining data in the TX buffer
-    std::memmove(_txBuffer, _txBuffer + dataSize, _txPosition - dataSize);
-
-    // Update the TX buffer position
-    _txPosition -= dataSize;
-
-    // Null-terminate the remaining buffer (optional for safety if treated as a string)
-    _txBuffer[_txPosition] = '\0';
-
-    return true;
-}
+#endif
 
 bool Stream::popAllTxBuffer(char* data, uint32_t maxSize)
 {
     return popFrontTxBuffer(data, maxSize);
 }
 
-bool Stream::popAllTxBuffer(std::string* data)
-{
-    return popFrontTxBuffer(data, _txPosition);
-}
+#if defined(__linux__)
+    bool Stream::popAllTxBuffer(std::string& data)
+    {
+        return popFrontTxBuffer(data, _txPosition);
+    }
+#endif
 
 bool Stream::popFrontRxBuffer(char* data, uint32_t dataSize)
 {
@@ -1256,58 +1271,57 @@ bool Stream::popFrontRxBuffer(char* data, uint32_t dataSize)
     return ret;
 }
 
-bool Stream::popFrontRxBuffer(std::string* data, uint32_t dataSize)
-{
-    if(data == nullptr)
+#if defined(__linux__)
+    bool Stream::popFrontRxBuffer(std::string& data, uint32_t dataSize)
     {
-        errorCode = 1;
-        return false;
+        bool ret = true;
+
+        if (dataSize > _rxPosition) 
+        {
+            errorCode = 2;// Not enough data in the buffer to pop
+            dataSize = _rxPosition;
+            ret = false;
+        }
+
+        // Assign the requested portion of data to the std::string
+        data.assign(_rxBuffer, dataSize);
+
+        // Shift the remaining data in the TX buffer
+        std::memmove(_rxBuffer, _rxBuffer + dataSize, _rxPosition - dataSize);
+
+        // Update the TX buffer position
+        _rxPosition -= dataSize;
+
+        // Null-terminate the remaining buffer (optional for safety if treated as a string)
+        _rxBuffer[_rxPosition] = '\0';
+
+        return ret;
     }
-
-    bool ret = true;
-
-    if (dataSize > _rxPosition) 
-    {
-        errorCode = 2;// Not enough data in the buffer to pop
-        dataSize = _rxPosition;
-        ret = false;
-    }
-
-    // Assign the requested portion of data to the std::string
-    *data = std::string(_rxBuffer, dataSize);
-
-    // Shift the remaining data in the TX buffer
-    std::memmove(_rxBuffer, _rxBuffer + dataSize, _rxPosition - dataSize);
-
-    // Update the TX buffer position
-    _rxPosition -= dataSize;
-
-    // Null-terminate the remaining buffer (optional for safety if treated as a string)
-    _rxBuffer[_rxPosition] = '\0';
-
-    return ret;
-}
+#endif
 
 bool Stream::popAllRxBuffer(char* data, uint32_t maxSize)
 {
     return popFrontRxBuffer(data, maxSize);
 }
 
-bool Stream::popAllRxBuffer(std::string* data)
-{
-    return popFrontRxBuffer(data, _rxPosition);
-}
+#if defined(__linux__)
+    bool Stream::popAllRxBuffer(std::string& data)
+    {
+        return popFrontRxBuffer(data, _rxPosition);
+    }
+#endif
 
-uint32_t Stream::availableTx() 
+uint32_t Stream::availableTx() const
 {
     // return strlen(_txBuffer);
     return _txPosition;
 }
 
-uint32_t Stream::availableRx() 
+uint32_t Stream::availableRx() const
 {
     // return strlen(_rxBuffer);
     return _rxPosition;
 }
+
 
 
