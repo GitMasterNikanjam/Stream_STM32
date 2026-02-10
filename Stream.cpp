@@ -89,9 +89,8 @@ void Stream_utility::trimString(const char* data, char* buffer, uint32_t max_siz
         len = std::strlen(data);
     }
 
-    uint32_t start = 0;
-    
-    int32_t end = len - 1;  // Find the end of the string. Use signed index to avoid underflow
+    int32_t start = 0;
+    int32_t end = static_cast<int32_t>(len) - 1;  // Find the end of the string. Use signed index to avoid underflow
 
     // Trim leading whitespace
     while (start <= end && std::isspace(static_cast<unsigned char>(data[start]))) 
@@ -112,7 +111,7 @@ void Stream_utility::trimString(const char* data, char* buffer, uint32_t max_siz
     }
 
     // Check if the buffer is large enough for the result
-    uint32_t trimmed_len = end - start + 1;
+    uint32_t trimmed_len = static_cast<uint32_t>(end - start + 1);
     if (max_size > 0 && trimmed_len >= max_size)
     {
         trimmed_len = max_size - 1;  // Ensure we don't overflow the buffer
@@ -120,7 +119,7 @@ void Stream_utility::trimString(const char* data, char* buffer, uint32_t max_siz
 
     // Copy the trimmed string into the buffer and null-terminate
     std::memcpy(buffer, data + start, trimmed_len);
-    buffer[end - start + 1] = '\0';  // Null-terminate the string
+    buffer[trimmed_len] = '\0';  // Null-terminate the string
 }
 
 bool Stream_utility::splitString(const char* data, char delimiter, char* firstSection, char* secondSection) 
@@ -171,8 +170,13 @@ bool Stream_utility::isWhitespaceOnly(const char* str)
 
 bool Stream_utility::validateRow(const char* data, size_t expectedColumnCount) 
 {
+    if (data == nullptr || expectedColumnCount == 0)
+    {
+        return false;
+    }
+
     char* fields = new char[strlen(data) + 1];
-    char* firstSection;
+    char* firstSection = new char[strlen(data) + 1];
 
     strcpy(fields, data);
 
@@ -182,10 +186,15 @@ bool Stream_utility::validateRow(const char* data, size_t expectedColumnCount)
     {
         if(isWhitespaceOnly(firstSection) || isWhitespaceOnly(fields))
         {
+            delete[] firstSection;
+            delete[] fields;
             return false;
         }
         fieldCount++;
     }
+
+    delete[] firstSection;
+    delete[] fields;
 
     if (fieldCount != (expectedColumnCount -1)) 
     {
@@ -508,7 +517,7 @@ bool Stream_utility::stringToUint32(const char* str, uint32_t* num)
     }
 
     char* end;
-    uint32_t value = static_cast<uint32_t>(strtoul(str, &end, 10));
+    unsigned long long value = strtoull(str, &end, 10);
     if (*end != '\0') 
     {
         // Invalid characters in input
@@ -516,12 +525,12 @@ bool Stream_utility::stringToUint32(const char* str, uint32_t* num)
     }
 
     // Check if the value fits within the uint32_t range
-    if (value > 4294967295) 
+    if (value > std::numeric_limits<uint32_t>::max())
     {
-        return false; // The value is out of range for uint8_t
+        return false; // The value is out of range for uint32_t
     }
 
-    *num = (uint32_t)(value); // Successfully convert to uint8_t
+    *num = static_cast<uint32_t>(value);
     
     return true;   
 }
@@ -954,8 +963,15 @@ Stream::Stream(char* txBuffer, uint32_t txBufferSize, char* rxBuffer, uint32_t r
     _rxPosition = 0;
 
     // Null-terminate the remaining buffer (optional for string usage)
-    memset(_txBuffer, '\0', _txBufferSize);
-    memset(_rxBuffer, '\0', _rxBufferSize);
+    if (_txBuffer != nullptr && _txBufferSize > 0)
+    {
+        memset(_txBuffer, '\0', _txBufferSize);
+    }
+
+    if (_rxBuffer != nullptr && _rxBufferSize > 0)
+    {
+        memset(_rxBuffer, '\0', _rxBufferSize);
+    }
 
     errorCode = 0;
 }

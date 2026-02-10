@@ -7,6 +7,7 @@
 #include <cstdio>   // Includes functions for input/output operations, such as formatted string printing (printf(), sprintf()).
 #include <cstdint>  // Defines fixed-width integer types (int32_t, uint64_t, etc.) and limits for platform-independent integer handling.
 #include <string>   // Provides the std::string class for working with dynamic strings in C++
+#include <limits>   // Provides std::numeric_limits for compile-time min/max checks.
 
 // ###################################################################################################
 // Define global macros:
@@ -566,5 +567,4 @@ private:
     /// @brief The last character position + 1 in the _rxBuffer. It is number of available character in the RX buffer.
     uint32_t _rxPosition;
 };
-
 
