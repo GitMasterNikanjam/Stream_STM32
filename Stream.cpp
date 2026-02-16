@@ -962,7 +962,7 @@ void Stream_utility::dataValueToString(char *str, const dataValueUnion& value, c
 // ###########################################################################################################
 // Stream class:
 
-Stream::Stream(char* txBuffer, uint32_t txBufferSize, char* rxBuffer, uint32_t rxBufferSize)
+Stream::Stream(char* txBuffer, uint32_t txBufferSize, char* rxBuffer, uint32_t rxBufferSize, BufferType txType, BufferType rxType)
 {
     _txBufferSize = txBufferSize;
     _rxBufferSize = rxBufferSize;
@@ -972,6 +972,12 @@ Stream::Stream(char* txBuffer, uint32_t txBufferSize, char* rxBuffer, uint32_t r
 
     _txPosition = 0;
     _rxPosition = 0;
+
+    _txType = txType;
+    _rxType = rxType;
+
+    _txHead = _txTail = _txCount = 0;
+    _rxHead = _rxTail = _rxCount = 0;
 
     // Null-terminate the remaining buffer (optional for string usage)
     if (_txBuffer && _txBufferSize) memset(_txBuffer, 0, _txBufferSize);
@@ -984,18 +990,30 @@ void Stream::setTxBuffer(char* txBuffer, uint32_t txBufferSize)
 {
     _txBufferSize = txBufferSize;
     _txBuffer = txBuffer;
-    _txPosition = 0;
+    clearTxBuffer();
 }
 
 void Stream::setRxBuffer(char* rxBuffer, uint32_t rxBufferSize)
 {
     _rxBufferSize = rxBufferSize;
     _rxBuffer = rxBuffer;
-    _rxPosition = 0;
+    clearRxBuffer();
+}
+
+void Stream::setBufferTypes(BufferType txType, BufferType rxType)
+{
+    _txType = txType;
+    _rxType = rxType;
+    clearTxBuffer();
+    clearRxBuffer();
 }
 
 const char* Stream::getTxBuffer() const
 {
+    if(_txType == BUFFER_RING)
+    {
+        return (_txBuffer && _txBufferSize) ? &_txBuffer[_txTail] : _txBuffer;
+    }
     return _txBuffer;
 }
 
@@ -1006,6 +1024,10 @@ uint32_t Stream::getTxBufferSize() const
 
 const char* Stream::getRxBuffer() const
 {
+    if(_rxType == BUFFER_RING)
+    {
+        return (_rxBuffer && _rxBufferSize) ? &_rxBuffer[_rxTail] : _rxBuffer;
+    }
     return _rxBuffer;
 }
 
@@ -1016,99 +1038,227 @@ uint32_t Stream::getRxBufferSize() const
 
 void Stream::clearTxBuffer() 
 {
-    memset(_txBuffer, 0, _txBufferSize); // Zero out TX buffers
+    if (_txBuffer && _txBufferSize) memset(_txBuffer, 0, _txBufferSize);    // Zero out TX buffers
+    
     _txPosition = 0;
+    _txHead = _txTail = _txCount = 0;
 }
 
 void Stream::clearRxBuffer() 
 {
-    memset(_rxBuffer, 0, _rxBufferSize); // Zero out RX buffer
+    if (_rxBuffer && _rxBufferSize) memset(_rxBuffer, 0, _rxBufferSize);    // Zero out RX buffer
+    
     _rxPosition = 0;
+    _rxHead = _rxTail = _rxCount = 0;
+}
+
+uint32_t Stream::txContiguousSize() const
+{
+    if(_txType != BUFFER_RING)
+    {
+        return availableTx();
+    }
+    if(!_txBuffer || _txBufferSize == 0) return 0;
+    uint32_t count = _txCount;
+    uint32_t toEnd = _txBufferSize - _txTail;
+    return (count < toEnd) ? count : toEnd;
+}
+
+uint32_t Stream::rxContiguousSize() const
+{
+    if(_rxType != BUFFER_RING)
+    {
+        return availableRx();
+    }
+    if(!_rxBuffer || _rxBufferSize == 0) return 0;
+    uint32_t count = _rxCount;
+    uint32_t toEnd = _rxBufferSize - _rxTail;
+    return (count < toEnd) ? count : toEnd;
+}
+
+uint32_t Stream::freeTx() const
+{
+    if(!_txBuffer || _txBufferSize < 2) return 0;
+    uint32_t used = availableTx();
+    uint32_t cap = _txBufferSize - 1;
+    return (used >= cap) ? 0 : (cap - used);
+}
+
+uint32_t Stream::freeRx() const
+{
+    if(!_rxBuffer || _rxBufferSize < 2) return 0;
+    uint32_t used = availableRx();
+    uint32_t cap = _rxBufferSize - 1;
+    return (used >= cap) ? 0 : (cap - used);
 }
 
 bool Stream::writeTxBuffer(const char* data, uint32_t dataSize) 
 {
-    if (dataSize > _txBufferSize) 
+    if (!_txBuffer || _txBufferSize == 0)
+    {
+        errorCode = 1;
+        return false;
+    }
+
+    // capacity is (size - 1)
+    if (dataSize > (_txBufferSize - 1)) 
     {
         errorCode = 1;  // "Error Stream: Data size exceeds TX buffer size.";
         return false;
     }
-    memcpy(_txBuffer, data, dataSize); // Copy data to TX buffer
-    _txPosition = dataSize;
 
-    return true;
+    clearTxBuffer();
+    return pushBackTxBuffer(data, dataSize);
 }
 
 bool Stream::writeRxBuffer(const char* data, uint32_t dataSize) 
 {
-    if (dataSize > _rxBufferSize) 
+    if (!_rxBuffer || _rxBufferSize == 0)
+    {
+        errorCode = 1;
+        return false;
+    }
+
+    if (dataSize > (_rxBufferSize - 1)) 
     {
         errorCode = 1;  // "Error Stream: Data size exceeds RX buffer size.";
         return false;
     }
-    memcpy(_rxBuffer, data, dataSize); // Copy data to RX buffer
-    _rxPosition = dataSize;
-
-    return true;
+    
+    clearRxBuffer();
+    return pushBackRxBuffer(data, dataSize);
 }
 
 bool Stream::pushBackTxBuffer(const char* data, uint32_t dataSize)
 {
-    if(data == NULL)
+    if(data == NULL || dataSize == 0)
     {
         errorCode = 1;  // "Error Stream: data can not be null.";
         return false;
     }
 
+    if(!_txBuffer || _txBufferSize < 2)
+    {
+        errorCode = 1;
+        return false;
+    }
+
+    // If message is larger than capacity, keep only the last part
+    if(dataSize > (_txBufferSize - 1))
+    {
+        data += (dataSize - (_txBufferSize - 1));
+        dataSize = (_txBufferSize - 1);
+    }
+
     bool ret = true;
 
-    // empty space size of tx buffer.
-    int64_t emptySize;
-    emptySize = (int64_t)getTxBufferSize() - (int64_t)availableTx() - 1;
-
-    // Check for buffer overflow
-    if (emptySize < dataSize)    
+    if(_txType == BUFFER_RING)
     {
-        errorCode = 2; // "TX Buffer Overflow."
-        ret = false;
-        removeFrontTxBuffer(dataSize - emptySize);
+        uint32_t free = freeTx();
+        if(free < dataSize)
+        {
+            errorCode = 2;
+            ret = false;
+            uint32_t need = dataSize - free;
+            if(need > _txCount) need = _txCount;
+            removeFrontTxBuffer(need);
+        }
+
+        // Now we have space
+        for(uint32_t i=0; i<dataSize; i++)
+        {
+            _txBuffer[_txHead] = data[i];
+            _txHead = (_txHead + 1) % _txBufferSize;
+            if(_txCount < (_txBufferSize - 1))
+                _txCount++;
+        }
+        return ret;
     }
+
+    // LINEAR
+    uint32_t free = freeTx();
+    if(free < dataSize)
+    {
+        errorCode = 2;
+        ret = false;
+        uint32_t need = dataSize - free;
+        if(need > _txPosition) need = _txPosition;
+        removeFrontTxBuffer(need);
+    }
+
+    // re-check space
+    free = freeTx();
+    if(free < dataSize)
+        return false;
 
     // Copy the data into the buffer
     std::memcpy(&_txBuffer[_txPosition], data, dataSize);
-    _txPosition += dataSize; // Update the position
-
+    _txPosition += dataSize;    // Update the position
+    _txBuffer[_txPosition] = '\0';
     return ret;
 }
 
 bool Stream::pushBackRxBuffer(const char* data, uint32_t dataSize)
 {
-    if(data == NULL)
+    if(data == NULL || dataSize == 0)
     {
         errorCode = 1;  // "Error Stream: data can not be null.";
         return false;
     }
 
-    bool ret = true;
-
-    // empty space size of rx buffer.
-    int64_t emptySize;
-    emptySize = (int64_t)(getRxBufferSize() -1) - (int64_t)availableRx();
-
-    // Check for buffer overflow
-    if (emptySize < dataSize)    
+    if(!_rxBuffer || _rxBufferSize < 2)
     {
-        errorCode = 2; // "RX Buffer Overflow."
-        ret = false;
-        removeFrontRxBuffer(dataSize - emptySize);
+        errorCode = 1;
+        return false;
     }
 
-    // Copy the data into the buffer
+    if(dataSize > (_rxBufferSize - 1))
+    {
+        data += (dataSize - (_rxBufferSize - 1));
+        dataSize = (_rxBufferSize - 1);
+    }
+
+    bool ret = true;
+
+    if(_rxType == BUFFER_RING)
+    {
+        uint32_t free = freeRx();
+        if(free < dataSize)
+        {
+            errorCode = 2;
+            ret = false;
+            uint32_t need = dataSize - free;
+            if(need > _rxCount) need = _rxCount;
+            removeFrontRxBuffer(need);
+        }
+
+        for(uint32_t i=0; i<dataSize; i++)
+        {
+            _rxBuffer[_rxHead] = data[i];
+            _rxHead = (_rxHead + 1) % _rxBufferSize;
+            if(_rxCount < (_rxBufferSize - 1))
+                _rxCount++;
+        }
+        return ret;
+    }
+
+    // LINEAR
+    uint32_t free = freeRx();
+    if(free < dataSize)
+    {
+        errorCode = 2;
+        ret = false;
+        uint32_t need = dataSize - free;
+        if(need > _rxPosition) need = _rxPosition;
+        removeFrontRxBuffer(need);
+    }
+    free = freeRx();
+    if(free < dataSize)
+        return false;
+
     std::memcpy(&_rxBuffer[_rxPosition], data, dataSize);
-    _rxPosition += dataSize; // Update the position
-
+    _rxPosition += dataSize;
     _rxBuffer[_rxPosition] = '\0';
-
     return ret;
 }
 
@@ -1134,65 +1284,76 @@ bool Stream::popFrontTxBuffer(char* data, uint32_t dataSize)
 
     bool ret = true;
 
-    if (dataSize > _txPosition) 
+    uint32_t avail = availableTx();
+    if (dataSize > avail) 
     {
-        dataSize = _txPosition;
+        dataSize = avail;
         errorCode = 2; // Not enough data in the buffer to pop
         ret = false;
     }
 
-    // Copy the data to the output buffer
+    if(_txType == BUFFER_RING)
+    {
+        for(uint32_t i=0; i<dataSize; i++)
+        {
+            data[i] = _txBuffer[_txTail];
+            _txTail = (_txTail + 1) % _txBufferSize;
+            if(_txCount) _txCount--;
+        }
+        return ret;
+    }
+
+    // LINEAR
     std::memcpy(data, _txBuffer, dataSize);
-
-    // Shift the remaining data in the TX buffer
     std::memmove(_txBuffer, _txBuffer + dataSize, _txPosition - dataSize);
-
-    // Update the TX buffer position
     _txPosition -= dataSize;
-
-    // Null-terminate the remaining buffer (optional for string usage)
     _txBuffer[_txPosition] = '\0';
-
     return ret;
 }
 
 bool Stream::removeFrontTxBuffer(uint32_t dataSize)
 {
-    if (dataSize > _txPosition) 
+    uint32_t avail = availableTx();
+    if (dataSize > avail) 
     {
         errorCode = 1; // Not enough data in the buffer to pop
         return false;
     }
 
-    // Shift the remaining data in the TX buffer
+    if(_txType == BUFFER_RING)
+    {
+        _txTail = (_txTail + dataSize) % _txBufferSize;
+        _txCount -= dataSize;
+        return true;
+    }
+
+    // LINEAR
     std::memmove(_txBuffer, _txBuffer + dataSize, _txPosition - dataSize);
-
-    // Update the TX buffer position
     _txPosition -= dataSize;
-
-    // Null-terminate the remaining buffer (optional for string usage)
     _txBuffer[_txPosition] = '\0';
-
     return true;
 }
 
 bool Stream::removeFrontRxBuffer(uint32_t dataSize)
 {
-    if (dataSize > _rxPosition) 
+    uint32_t avail = availableRx();
+    if (dataSize > avail)
     {
-        errorCode = 1; // Not enough data in the buffer to pop
+        errorCode = 1;
         return false;
     }
 
-    // Shift the remaining data in the TX buffer
+    if(_rxType == BUFFER_RING)
+    {
+        _rxTail = (_rxTail + dataSize) % _rxBufferSize;
+        _rxCount -= dataSize;
+        return true;
+    }
+
+    // LINEAR
     std::memmove(_rxBuffer, _rxBuffer + dataSize, _rxPosition - dataSize);
-
-    // Update the TX buffer position
     _rxPosition -= dataSize;
-
-    // Null-terminate the remaining buffer (optional for string usage)
     _rxBuffer[_rxPosition] = '\0';
-
     return true;
 }
 
@@ -1249,25 +1410,30 @@ bool Stream::popFrontRxBuffer(char* data, uint32_t dataSize)
         ret = false;
     }
 
-    if (dataSize > _rxPosition) 
+    uint32_t avail = availableRx();
+    if(dataSize > avail)
     {
-        errorCode = 2; // Not enough data in the buffer to pop
-        dataSize = _rxPosition;
+        dataSize = avail;
+        errorCode = 2;
         ret = false;
     }
 
-    // Copy the data to the output buffer
+    if(_rxType == BUFFER_RING)
+    {
+        for(uint32_t i=0; i<dataSize; i++)
+        {
+            data[i] = _rxBuffer[_rxTail];
+            _rxTail = (_rxTail + 1) % _rxBufferSize;
+            if(_rxCount) _rxCount--;
+        }
+        return ret;
+    }
+
+    // LINEAR
     std::memcpy(data, _rxBuffer, dataSize);
-
-    // Shift the remaining data in the TX buffer
     std::memmove(_rxBuffer, _rxBuffer + dataSize, _rxPosition - dataSize);
-
-    // Update the TX buffer position
     _rxPosition -= dataSize;
-
-    // Null-terminate the remaining buffer (optional for string usage)
     _rxBuffer[_rxPosition] = '\0';
-
     return ret;
 }
 
@@ -1312,13 +1478,19 @@ bool Stream::popAllRxBuffer(char* data, uint32_t maxSize)
 #endif
 
 uint32_t Stream::availableTx() const
-{
+{   
+    if(_txType == BUFFER_RING)
+        return _txCount;
+
     // return strlen(_txBuffer);
     return _txPosition;
 }
 
 uint32_t Stream::availableRx() const
 {
+    if(_rxType == BUFFER_RING)
+        return _rxCount;
+        
     // return strlen(_rxBuffer);
     return _rxPosition;
 }

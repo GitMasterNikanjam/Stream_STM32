@@ -15,6 +15,21 @@
 // ###################################################################################################
 // Define global macros:
 
+// ###################################################################################################
+// Buffer type selection
+
+/**
+ * @enum BufferType
+ * @brief Select internal buffer behavior.
+ *
+ * - BUFFER_LINEAR: simple linear buffer (uses memmove on remove/pop).
+ * - BUFFER_RING: circular/ring buffer (no memmove; suited for ISR/DMA producer-consumer).
+ */
+enum BufferType
+{
+    BUFFER_LINEAR = 0,
+    BUFFER_RING   = 1
+};
 
 // ###################################################################################################
 // Data type enumaration and value union :
@@ -353,7 +368,7 @@ public:
      * @param rxBuffer: Recieve buffer pointer.
      * @param rxBufferSize: Recieve buffer size.
      */
-    Stream(char* txBuffer = nullptr, uint32_t txBufferSize = 0, char* rxBuffer = nullptr, uint32_t rxBufferSize = 0);
+    Stream(char* txBuffer = nullptr, uint32_t txBufferSize = 0, char* rxBuffer = nullptr, uint32_t rxBufferSize = 0, BufferType txType = BUFFER_LINEAR, BufferType rxType = BUFFER_LINEAR);
 
     /**
      * Destructor. Non-owning: destructor does NOT free buffers.
@@ -378,15 +393,31 @@ public:
      * @param txBuffer: Transmit buffer pointer.
      * @param txBufferSize: Transmit buffer size.
      */
-    void setTxBuffer(char* txBuffer, uint32_t txBufferSize);
+    void setTxBuffer(char* txBuffer, uint32_t txBufferSize, BufferType txType = BUFFER_LINEAR);
 
     /**
      * @brief Set receive buffer.
      * @param rxBuffer: Recieve buffer pointer.
      * @param rxBufferSize: Recieve buffer size.
      */
-    void setRxBuffer(char* rxBuffer, uint32_t rxBufferSize);
+    void setRxBuffer(char* rxBuffer, uint32_t rxBufferSize, BufferType rxType = BUFFER_LINEAR);
     
+    /**
+     * @brief Set buffer types.
+     * @note Call before begin/use. Changing type clears buffer state.
+     */
+    void setBufferTypes(BufferType txType, BufferType rxType);
+
+    /**
+     * @brief Return current TX buffer type.
+     */
+    BufferType getTxBufferType() const { return _txType; }
+
+    /**
+     * @brief Return current RX buffer type.
+     */
+    BufferType getRxBufferType() const { return _rxType; }
+
     /**
      * @brief Return TxBuffer size.
      */
@@ -406,6 +437,21 @@ public:
      * @brief Return RxBuffer pointer.
      */
     const char* getRxBuffer() const;
+
+    /**
+     * @brief In ring-buffer mode, TX/RX data may wrap. These helpers return the
+     *        length of the current contiguous chunk starting at getTxBuffer()/getRxBuffer().
+     * @note In linear mode, these equal availableTx()/availableRx().
+     */
+    uint32_t txContiguousSize() const;
+    uint32_t rxContiguousSize() const;
+
+    /**
+     * @brief Return free space (bytes) that can be written without overflow.
+     * @note Uses (bufferSize - 1) capacity to keep one slot empty.
+     */
+    uint32_t freeTx() const;
+    uint32_t freeRx() const;
 
     /**
      * @brief Clear all data on the TxBuffer.
@@ -594,6 +640,19 @@ private:
 
     /// @brief The last character position + 1 in the _rxBuffer. It is number of available character in the RX buffer.
     uint32_t _rxPosition = 0;
+
+    // Buffer type selection
+    BufferType _txType = BUFFER_LINEAR;
+    BufferType _rxType = BUFFER_LINEAR;
+
+    // Ring-buffer state (only used when type == BUFFER_RING)
+    uint32_t _txHead = 0;
+    uint32_t _txTail = 0;
+    uint32_t _txCount = 0;
+
+    uint32_t _rxHead = 0;
+    uint32_t _rxTail = 0;
+    uint32_t _rxCount = 0;
 };
 
 
