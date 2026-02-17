@@ -1,12 +1,32 @@
 #pragma once
 
+/**
+ * @file Stream.h
+ * @brief Lightweight TX/RX buffer manager for embedded targets.
+ *
+ * This module provides:
+ * - A Stream class that manages two user-provided buffers (TX and RX).
+ * - Optional buffer behavior: linear buffer or ring (circular) buffer.
+ * - Utility functions for parsing/trimming C strings and type conversion.
+ *
+ * @note This library is **non-owning**: it does NOT allocate/free TX/RX buffers.
+ *       You must provide valid memory for buffers for the lifetime of the Stream object.
+ *
+ * @note No dynamic allocation is performed by Stream itself.
+ *       (Exception: your Stream_utility::validateRow() currently uses `new[]` in .cpp.)
+ *
+ * @warning Concurrency / ISR note:
+ * - If one context writes (ISR) and another reads (main loop), protect shared state
+ *   or design as single-producer/single-consumer with careful access rules.
+ */
+
 // ####################################################################################################
 // Include libraries:
 
-#include <cstring>  // Provides functions for manipulating C-style strings (e.g., strcpy(), strlen(), strcat()).
-#include <cstdio>   // Includes functions for input/output operations, such as formatted string printing (printf(), sprintf()).
-#include <cstdint>  // Defines fixed-width integer types (int32_t, uint64_t, etc.) and limits for platform-independent integer handling.
-#include <cstddef>
+#include <cstring>  ///< Provides functions for manipulating C-style strings (e.g., strcpy(), strlen(), strcat(), memcpy, memmove, memset).
+#include <cstdio>   ///< Includes functions for input/output operations, such as formatted string printing (printf(), sprintf()).
+#include <cstdint>  ///< Defines fixed-width integer types (int32_t, uint64_t, etc.) and limits for platform-independent integer handling.
+#include <cstddef>  ///< size_t
 
 #if defined(__linux__)
     #include <string>   // Provides the std::string class for working with dynamic strings in C++
@@ -22,13 +42,19 @@
  * @enum BufferType
  * @brief Select internal buffer behavior.
  *
- * - BUFFER_LINEAR: simple linear buffer (uses memmove on remove/pop).
- * - BUFFER_RING: circular/ring buffer (no memmove; suited for ISR/DMA producer-consumer).
+ * - BUFFER_LINEAR:
+ *   Data always starts at index 0. Removing from front uses `memmove()` to shift.
+ *
+ * - BUFFER_RING:
+ *   Circular buffer with head/tail indices. Removing from front does NOT use memmove.
+ *
+ * @note In ring mode, effective capacity is (bufferSize - 1) bytes.
+ *       One byte is reserved so you can keep a '\0' terminator for string compatibility.
  */
-enum BufferType
+enum BufferType : uint8_t 
 {
-    BUFFER_LINEAR = 0,
-    BUFFER_RING   = 1
+    BUFFER_LINEAR = 0,      ///< Linear buffer (memmove on pop/remove)
+    BUFFER_RING   = 1       ///< Ring buffer (head/tail, no memmove)
 };
 
 // ###################################################################################################
@@ -38,9 +64,9 @@ enum BufferType
  * @enum dataTypeEnum
  * @brief Enum value for data type. eg: uint8, float, int32, ... .
  */
-enum dataTypeEnum
+enum dataTypeEnum : uint8_t 
 {
-    noneType,
+    noneType = 0,
     uint8Type,
     uint16Type,
     uint32Type,
@@ -58,8 +84,16 @@ enum dataTypeEnum
 
 /**
  * @union dataValueUnion
- * @brief Union to store different data types efficiently
- *  */ 
+ * @brief Stores one value of different supported types.
+ *
+ * This union is useful for passing values without heap allocation.
+ *
+ * @warning Union active-member rule:
+ * Only one field is logically "active" at a time. Track the active type separately
+ * (e.g., with a dataTypeEnum) when using it.
+ *
+ * @note stringValue holds up to 7 chars + '\0'. stringPointerValue is non-owning.
+ */
 union dataValueUnion 
 {
     uint8_t uint8Value;
@@ -72,23 +106,91 @@ union dataValueUnion
     int64_t int64Value;
     float floatValue;
     double doubleValue;
-    char stringValue[8];
+    char stringValue[8];            ///< inline short string (max 7 chars + '\0')
+    char* stringPointerValue;       ///< pointer to external string (non-owning)
     bool boolValue;
+
+    /**
+     * @brief Clear the union to all zeros.
+     * @note Does NOT allocate heap memory.
+     */
+    void clear() { std::memset(this, 0, sizeof(*this)); }
+
+    /**
+     * @brief Set the union to hold a string pointer value.
+     * @param p Pointer to external buffer/string (non-owning).
+     */
+    void setStringPointer(char* p)
+    {
+        clear();
+        stringPointerValue = p;
+    }
 };
 
+/**
+ * @enum StreamError
+ * @brief Error codes reported by Stream operations.
+ *
+ * Most Stream methods update `Stream::errorCode` when something goes wrong.
+ * This enum documents the intended meaning of those values.
+ *
+ * @note Some functions may return `false` and still set `errorCode` to
+ *       STREAM_ERR_OVERFLOW_OR_SHORT when they partially succeed (e.g. pop less
+ *       than requested, or push after dropping oldest bytes in ring mode).
+ */
+enum StreamError : int8_t
+{
+    /** @brief No error. Operation completed as requested. */
+    STREAM_OK = 0,
+
+    /**
+     * @brief Invalid parameter / invalid state.
+     *
+     * Typical reasons:
+     * - Null buffer pointer (TX/RX not configured)
+     * - Buffer size too small (e.g. size < 2 for capacity rule)
+     * - Request exceeds capacity in APIs that require full fit
+     * - Attempt to remove more bytes than available (in remove APIs)
+     */
+    STREAM_ERR_PARAM = 1,
+
+    /**
+     * @brief Overflow or short read/write condition.
+     *
+     * Typical reasons:
+     * - Push: not enough free space (overflow). Some implementations may drop
+     *   oldest bytes to make room and still return `false` or `true` depending on policy.
+     * - Pop: requested more bytes than available, so fewer bytes were returned.
+     */
+    STREAM_ERR_OVERFLOW_OR_SHORT = 2,
+
+    /**
+     * @brief Invalid size argument (typically dataSize == 0).
+     *
+     * Used when a function requires a non-zero size but was called with zero.
+     */
+    STREAM_ERR_SIZE_ZERO = 3
+};
+
+
 // ####################################################################################################
-// Public General functions for Stream_utility namespace:
+// Stream_utility namespace
 
 /**
  * @namespace Stream_utility
- * @brief set of functions for working with C-style strings, performing operations such as trimming, splitting, validating formats, and type conversions.
+ * @brief Helper functions for string manipulation, validation, and conversion.
+ *
+ * These are mainly designed for embedded environments using C strings.
  */
 namespace Stream_utility
 {
 
 /**
- * @brief Manual strnlen() function for Keil
- *  */ 
+ * @brief Safe bounded strlen implementation (Keil-friendly).
+ * @param str Input C-string.
+ * @param max_len Maximum length to scan.
+ * @return Length up to max_len (stops at '\0' or max_len).
+ */
 size_t safe_strnlen(const char* str, size_t max_len);
 
 /**
@@ -111,10 +213,14 @@ void trimString(char* data, uint32_t max_size = 0);
 void trimString(const char* data, char* buffer, uint32_t max_size = 0);
 
 /**
- * @brief Function to split a string by a delimiter in two section and return a splited strings.
- * @param firstSection is the first part of splited string.
- * @param secondSection is the second part of splited string.
- * @return true if splited succeeded.
+ * @brief Split string into two parts by delimiter.
+ * @param[in]  data Input string.
+ * @param[in]  delimiter Split character.
+ * @param[out] firstSection Output first part (optional).
+ * @param[in]  firstSize Size of firstSection buffer.
+ * @param[out] secondSection Output second part (optional).
+ * @param[in]  secondSize Size of secondSection buffer.
+ * @return true if delimiter found and outputs fit.
  */
 bool splitString(const char* data, char delimiter, char* firstSection = nullptr, size_t firstSize = 0, char* secondSection = nullptr, size_t secondSize = 0);
 
@@ -125,11 +231,15 @@ bool splitString(const char* data, char delimiter, char* firstSection = nullptr,
 bool isWhitespaceOnly(const char* data);
 
 /**
- * @brief Function to validate a string has the expected sections that splited by ',' character.
- * @note if any sections be empty space it returns false.
- * @return true if succeeded.
+ * @brief Validate a comma-separated row has exactly expectedColumnCount non-empty fields.
+ * @param[in] data Input CSV-like row.
+ * @param[in] expectedColumnCount Expected number of comma-separated fields.
+ * @return true if field count matches and no field is whitespace-only.
+ * @warning Current implementation allocates a temporary copy using new[] in the .cpp.
  */
 bool validateRow(const char* data, size_t expectedColumnCount);
+
+// ---- type checks ----
 
 /**
  * @brief Check string format for boolean (true/false).
@@ -199,18 +309,18 @@ bool isUInt16(const char* str);
 bool isUInt8(const char* str);
 
 /**
- * @brief Convert double value to string with certain precision.
- * @param value: double value.
- * @param precision: number of characters after the decimal point.
- * @return string representation of the double value.
+ * @brief Convert decimal number to string with fixed precision.
+ * @param value Input value.
+ * @param precision Digits after decimal point.
+ * @param[out] output Output buffer (must be large enough).
  */
 void decimalToString(double value, uint8_t precision, char* output);
 
 /**
- * @brief Convert float value to string with certain precision.
- * @param value: float value.
- * @param precision: number of characters after the decimal point.
- * @return string representation of the float value.
+ * @brief Convert decimal number to string with fixed precision.
+ * @param value Input value.
+ * @param precision Digits after decimal point.
+ * @param[out] output Output buffer (must be large enough).
  */
 void decimalToString(float value, uint8_t precision, char* output);
 
@@ -242,6 +352,8 @@ bool isUintiger(const char* str);
  * @return true if succeeded.
  */
 bool endsWith(const char* str, const char* suffix);
+
+// ---- conversions ----
 
 /**
  * @brief Convert string to Uint8 number.
@@ -342,37 +454,50 @@ bool checkValueType(const char *data, const dataTypeEnum type);
     std::string dataValueToString(const dataValueUnion& value, const dataTypeEnum type);
 #endif
 
-/// @brief Helper function to convert dataValueUnion to string based on ParamType_t
+/**
+ * @brief Convert union to C-string representation.
+ * @param[out] str Output buffer.
+ * @param[in] value Input union.
+ * @param[in] type Active type of union.
+ */
 void dataValueToString(char *str, const dataValueUnion& value, const dataTypeEnum type);
 
 }
 
 // ######################################################################################################
-// Public Classes:
+// Stream class
 
 /**
  * @class Stream
- * @brief This class can be used as an object for data receive and transmit flow management.
+ * @brief TX/RX buffer manager supporting linear and ring (circular) behavior.
+ *
+ * Stream does not allocate memory; you must provide TX/RX buffers.
+ *
+ * ## Capacity rule
+ * For safety and optional '\0' termination, the effective capacity is:
+ * - capacity = (bufferSize - 1)
+ *
+ * This means if bufferSize == 0 or 1, the buffer cannot store data.
  */
 class Stream
 {
 public:
 
-    /// @brief Last error code number occurred for the object.
-    int8_t errorCode = 0;
+    /** @brief Last error code (see @ref StreamError). */
+    int8_t errorCode = STREAM_OK;
 
     /**
-     * @brief Constructor. Init some variables and parameters. Init TX/RX buffers.
-     * @param txBuffer: Transmit buffer pointer.
-     * @param txBufferSize: Transmit buffer size.
-     * @param rxBuffer: Recieve buffer pointer.
-     * @param rxBufferSize: Recieve buffer size.
+     * @brief Construct Stream with optional buffers and buffer types.
+     * @param txBuffer TX buffer pointer (non-owning).
+     * @param txBufferSize TX buffer size in bytes.
+     * @param rxBuffer RX buffer pointer (non-owning).
+     * @param rxBufferSize RX buffer size in bytes.
+     * @param txType TX buffer type (linear/ring).
+     * @param rxType RX buffer type (linear/ring).
      */
     Stream(char* txBuffer = nullptr, uint32_t txBufferSize = 0, char* rxBuffer = nullptr, uint32_t rxBufferSize = 0, BufferType txType = BUFFER_LINEAR, BufferType rxType = BUFFER_LINEAR);
 
-    /**
-     * Destructor. Non-owning: destructor does NOT free buffers.
-     */
+    /// @brief Destructor (non-owning; does not free buffers).
     ~Stream() = default;
 
     /**
@@ -389,23 +514,27 @@ public:
     Stream& operator=(Stream&&) = delete;
 
     /**
-     * @brief Set transmit buffer.
-     * @param txBuffer: Transmit buffer pointer.
-     * @param txBufferSize: Transmit buffer size.
+     * @brief Set TX buffer and its type. Clears existing TX state.
+     * @param txBuffer Buffer pointer (must remain valid for Stream lifetime or until changed).
+     * @param txBufferSize Buffer size in bytes.
+     * @param txType Buffer mode (linear/ring).
+     *
+     * @note For storing any data, txBufferSize must be >= 2 (capacity is txBufferSize-1).
      */
     void setTxBuffer(char* txBuffer, uint32_t txBufferSize, BufferType txType = BUFFER_LINEAR);
 
     /**
-     * @brief Set receive buffer.
-     * @param rxBuffer: Recieve buffer pointer.
-     * @param rxBufferSize: Recieve buffer size.
+     * @brief Set RX buffer and its type. Clears existing RX state.
+     * @param rxBuffer Buffer pointer.
+     * @param rxBufferSize Buffer size in bytes.
+     * @param rxType Buffer mode (linear/ring).
      */
     void setRxBuffer(char* rxBuffer, uint32_t rxBufferSize, BufferType rxType = BUFFER_LINEAR);
     
     /**
-     * @brief Set buffer types.
-     * @note Call before begin/use. Changing type clears buffer state.
-     */
+     * @brief Change buffer types for TX and RX. Clears both states.
+     * @warning Changing type discards current buffered data.
+     */ 
     void setBufferTypes(BufferType txType, BufferType rxType);
 
     /**
@@ -429,38 +558,68 @@ public:
     uint32_t getRxBufferSize() const;
 
     /**
-     * @brief Return TxBuffer pointer.
+     * @brief Get base pointer to TX buffer memory (always buffer start).
+     * @return Pointer to the start of the TX buffer (may be nullptr).
+     *
+     * @note This does NOT point to “first valid data” in ring mode.
+     *       Use txReadPtr() for that purpose.
      */
     const char* getTxBuffer() const;
     
     /**
-     * @brief Return RxBuffer pointer.
+     * @brief Get base pointer to RX buffer memory (always buffer start).
+     * @return Pointer to the start of the RX buffer (may be nullptr).
+     *
+     * @note This does NOT point to “first valid data” in ring mode.
+     *       Use rxReadPtr() for that purpose.
      */
     const char* getRxBuffer() const;
 
     /**
-     * @brief In ring-buffer mode, TX/RX data may wrap. These helpers return the
-     *        length of the current contiguous chunk starting at getTxBuffer()/getRxBuffer().
-     * @note In linear mode, these equal availableTx()/availableRx().
+     * @brief Pointer to first valid TX byte (read position).
+     * @return In ring mode: &txBuffer[tail]. In linear mode: txBuffer base.
+     *
+     * @note In ring mode, data may wrap. Use txContiguousSize() to know how many bytes
+     *       are contiguous from this pointer before wrapping to the buffer start.
+     */
+    const char* txReadPtr() const;
+
+    /**
+     * @brief Pointer to first valid RX byte to be read.
+     * @return In ring mode: &rxBuffer[tail]. In linear mode: rxBuffer base.
+     */
+    const char* rxReadPtr() const;
+
+    /**
+     * @brief Contiguous TX bytes available from txReadPtr().
+     * @return Number of bytes that can be read/transmitted in one linear chunk.
+     *
+     * @note If availableTx() > txContiguousSize() in ring mode, the remaining bytes are at
+     *       the start of the buffer (getTxBuffer()).
      */
     uint32_t txContiguousSize() const;
+
+    /**
+     * @brief Number of contiguous valid bytes from rxReadPtr().
+     *
+     * In ring mode, valid data may wrap. This returns the chunk length until end-of-buffer.
+     * In linear mode, this equals availableRx().
+     */
     uint32_t rxContiguousSize() const;
 
     /**
-     * @brief Return free space (bytes) that can be written without overflow.
-     * @note Uses (bufferSize - 1) capacity to keep one slot empty.
+     * @brief Bytes free for writing (without overflow).
+     * @note Effective capacity is (bufferSize - 1).
      */
     uint32_t freeTx() const;
+
+    /// @copydoc freeTx()
     uint32_t freeRx() const;
 
-    /**
-     * @brief Clear all data on the TxBuffer.
-     */
+    /// @brief Clear TX buffer content and reset indices.
     void clearTxBuffer();
 
-    /**
-     * @brief Clear all data on the RxBuffer.
-     */
+    /// @brief Clear RX buffer content and reset indices.
     void clearRxBuffer();
 
     /**
@@ -612,33 +771,33 @@ public:
     bool popAllRxBuffer(char* data, uint32_t maxSize);
 
     /**
-     * @brief Return data length on TxBuffer.
+     * @brief Return number of bytes currently stored in TX.
      */
     uint32_t availableTx() const;
 
     /**
-     * @brief Return data length on RxBuffer.
+     * @brief Return number of bytes currently stored in RX.
      */
     uint32_t availableRx() const;
 
 private:
 
-    /// @brief Transmit buffer pointer.
+    /// @brief TX buffer base pointer
     char* _txBuffer = nullptr;
 
-    /// @brief Receive buffer pointer.
+    /// @brief RX buffer base pointer
     char* _rxBuffer = nullptr;
 
-    /// @brief Transmit buffer size. It is fixed value.
+    /// @brief TX buffer allocated size (bytes)
     uint32_t _txBufferSize = 0;
 
-    /// @brief Receive buffer size. It is fixed value.
+    /// @brief RX buffer allocated size (bytes)
     uint32_t _rxBufferSize = 0;
 
-    /// @brief The last character position + 1 in the _txBuffer. It is number of available character in the TX buffer.
+    /// @brief Linear mode: length of valid TX data
     uint32_t _txPosition = 0;
 
-    /// @brief The last character position + 1 in the _rxBuffer. It is number of available character in the RX buffer.
+    /// @brief Linear mode: length of valid RX data
     uint32_t _rxPosition = 0;
 
     // Buffer type selection
@@ -646,13 +805,13 @@ private:
     BufferType _rxType = BUFFER_LINEAR;
 
     // Ring-buffer state (only used when type == BUFFER_RING)
-    uint32_t _txHead = 0;
-    uint32_t _txTail = 0;
-    uint32_t _txCount = 0;
+    uint32_t _txHead = 0;           ///< Next write index (TX ring)
+    uint32_t _txTail = 0;           ///< Next read index (TX ring)
+    uint32_t _txCount = 0;          ///< Stored bytes (TX ring)
 
-    uint32_t _rxHead = 0;
-    uint32_t _rxTail = 0;
-    uint32_t _rxCount = 0;
+    uint32_t _rxHead = 0;           ///< Next write index (RX ring)
+    uint32_t _rxTail = 0;           ///< Next read index (RX ring)
+    uint32_t _rxCount = 0;          ///< Stored bytes (RX ring)
 };
 
 
