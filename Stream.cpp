@@ -1279,6 +1279,7 @@ bool Stream::popFrontTxBuffer(char* data, uint32_t dataSize)
 
     if (data == nullptr) { errorCode = STREAM_ERR_PARAM; return false; }
     if (dataSize == 0) { errorCode = STREAM_ERR_SIZE_ZERO; return false; }
+    if (!_txBuffer || _txBufferSize < 2) { errorCode = STREAM_ERR_PARAM; return false; }
 
     bool ret = true;
 
@@ -1305,8 +1306,9 @@ bool Stream::popFrontTxBuffer(char* data, uint32_t dataSize)
     }
 
     // LINEAR
+    // IMPORTANT: Do NOT write a '\0' terminator into the caller's output buffer.
+    // These APIs are byte-oriented (binary safe). The caller owns sizing/termination.
     std::memcpy(data, _txBuffer, dataSize);
-    data[dataSize] = '\0'; // same note as above
 
     std::memmove(_txBuffer, _txBuffer + dataSize, _txPosition - dataSize);
     _txPosition -= dataSize;
@@ -1318,6 +1320,8 @@ bool Stream::removeFrontTxBuffer(uint32_t dataSize)
 {
     errorCode = STREAM_OK;
     if (dataSize == 0) return true;
+
+    if (!_txBuffer || _txBufferSize < 2) { errorCode = STREAM_ERR_PARAM; return false; }
 
     uint32_t avail = availableTx();
     if (dataSize > avail) { errorCode = STREAM_ERR_PARAM; return false; }
@@ -1341,6 +1345,8 @@ bool Stream::removeFrontRxBuffer(uint32_t dataSize)
 {
     errorCode = STREAM_OK;
     if (dataSize == 0) return true;
+
+    if (!_rxBuffer || _rxBufferSize < 2) { errorCode = STREAM_ERR_PARAM; return false; }
 
     uint32_t avail = availableRx();
     if (dataSize > avail) { errorCode = STREAM_ERR_PARAM; return false; }
@@ -1412,6 +1418,7 @@ bool Stream::popFrontRxBuffer(char* data, uint32_t dataSize)
 
     if (data == nullptr) { errorCode = STREAM_ERR_PARAM; return false; }
     if (dataSize == 0) { errorCode = STREAM_ERR_SIZE_ZERO; return false; }
+    if (!_rxBuffer || _rxBufferSize < 2) { errorCode = STREAM_ERR_PARAM; return false; }
 
     bool ret = true;
     uint32_t avail = availableRx();
@@ -1438,8 +1445,9 @@ bool Stream::popFrontRxBuffer(char* data, uint32_t dataSize)
     }
 
     // LINEAR
+    // IMPORTANT: Do NOT write a '\0' terminator into the caller's output buffer.
+    // These APIs are byte-oriented (binary safe). The caller owns sizing/termination.
     std::memcpy(data, _rxBuffer, dataSize);
-    data[dataSize] = '\0';
 
     std::memmove(_rxBuffer, _rxBuffer + dataSize, _rxPosition - dataSize);
     _rxPosition -= dataSize;
@@ -1493,6 +1501,7 @@ bool Stream::popAllRxBuffer(char* data, uint32_t maxSize)
 
 uint32_t Stream::availableTx() const
 {   
+    if(!_txBuffer || _txBufferSize < 2) return 0;
     if(_txType == BUFFER_RING)
         return _txCount;
 
@@ -1502,6 +1511,7 @@ uint32_t Stream::availableTx() const
 
 uint32_t Stream::availableRx() const
 {
+    if(!_rxBuffer || _rxBufferSize < 2) return 0;
     if(_rxType == BUFFER_RING)
         return _rxCount;
         
