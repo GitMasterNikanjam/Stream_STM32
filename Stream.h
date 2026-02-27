@@ -35,6 +35,21 @@
 // ###################################################################################################
 // Define global macros:
 
+// -------------------------------------------------------------------------------------------------
+// Memory barrier for ISR <-> main-loop visibility (ring-buffer mode)
+// On Cortex-M, a DMB ensures buffer writes are visible before publishing head/tail updates.
+// You can override by defining STREAM_DMB() before including Stream.h.
+// -------------------------------------------------------------------------------------------------
+#ifndef STREAM_DMB
+  #if (defined(__arm__) || defined(__thumb__) || defined(__ARM_ARCH)) && (defined(__GNUC__) || defined(__clang__))
+    #define STREAM_DMB() __asm volatile("dmb 0xF" ::: "memory")
+  #elif defined(__DMB)  // CMSIS intrinsic (if available)
+    #define STREAM_DMB() __DMB()
+  #else
+    #define STREAM_DMB() do {} while(0)
+  #endif
+#endif
+
 // ###################################################################################################
 // Buffer type selection
 
@@ -600,6 +615,14 @@ public:
     uint32_t txContiguousSize() const;
 
     /**
+     * @brief Atomically (lock-free) snapshot TX contiguous chunk.
+     *
+     * This avoids a race where txReadPtr() and txContiguousSize() are called separately
+     * while the TX-complete ISR advances the tail.
+     */
+    bool txPeekContiguous(const char*& ptr, uint32_t& len) const;
+
+    /**
      * @brief Number of contiguous valid bytes from rxReadPtr().
      *
      * In ring mode, valid data may wrap. This returns the chunk length until end-of-buffer.
@@ -805,13 +828,11 @@ private:
     BufferType _rxType = BUFFER_LINEAR;
 
     // Ring-buffer state (only used when type == BUFFER_RING)
-    uint32_t _txHead = 0;           ///< Next write index (TX ring)
-    uint32_t _txTail = 0;           ///< Next read index (TX ring)
-    uint32_t _txCount = 0;          ///< Stored bytes (TX ring)
+    volatile uint32_t _txHead = 0;     ///< written by producer only
+    volatile uint32_t _txTail = 0;     ///< written by consumer only
 
-    uint32_t _rxHead = 0;           ///< Next write index (RX ring)
-    uint32_t _rxTail = 0;           ///< Next read index (RX ring)
-    uint32_t _rxCount = 0;          ///< Stored bytes (RX ring)
+    volatile uint32_t _rxHead = 0;     ///< written by producer only
+    volatile uint32_t _rxTail = 0;     ///< written by consumer only
 };
 
 

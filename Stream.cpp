@@ -972,8 +972,8 @@ Stream::Stream(char* txBuffer, uint32_t txBufferSize, char* rxBuffer, uint32_t r
     _txType = txType;
     _rxType = rxType;
 
-    _txHead = _txTail = _txCount = 0;
-    _rxHead = _rxTail = _rxCount = 0;
+    _txHead = _txTail = 0;
+    _rxHead = _rxTail = 0;
 
     // Null-terminate the remaining buffer (optional for string usage)
     if (_txBuffer && _txBufferSize) memset(_txBuffer, 0, _txBufferSize);
@@ -1052,7 +1052,7 @@ void Stream::clearTxBuffer()
     if (_txBuffer && _txBufferSize) memset(_txBuffer, 0, _txBufferSize);    // Zero out TX buffers
     
     _txPosition = 0;
-    _txHead = _txTail = _txCount = 0;
+    _txHead = _txTail = 0;
 }
 
 void Stream::clearRxBuffer() 
@@ -1061,7 +1061,7 @@ void Stream::clearRxBuffer()
     if (_rxBuffer && _rxBufferSize) memset(_rxBuffer, 0, _rxBufferSize);    // Zero out RX buffer
     
     _rxPosition = 0;
-    _rxHead = _rxTail = _rxCount = 0;
+    _rxHead = _rxTail = 0;
 }
 
 uint32_t Stream::txContiguousSize() const
@@ -1069,8 +1069,48 @@ uint32_t Stream::txContiguousSize() const
     if (_txType != BUFFER_RING) return availableTx();
     if (!_txBuffer || _txBufferSize < 2) return 0;
 
-    uint32_t toEnd = _txBufferSize - _txTail;
-    return (_txCount < toEnd) ? _txCount : toEnd;
+    uint32_t tail1, tail2, head;
+    do
+    {
+        tail1 = _txTail;
+        head  = _txHead;
+        tail2 = _txTail;
+    } while (tail1 != tail2);
+
+    uint32_t used = (head >= tail1) ? (head - tail1) : (_txBufferSize - (tail1 - head));
+    uint32_t toEnd = _txBufferSize - tail1;
+    return (used < toEnd) ? used : toEnd;
+}
+
+bool Stream::txPeekContiguous(const char*& ptr, uint32_t& len) const
+{
+    ptr = nullptr;
+    len = 0;
+
+    if (_txType != BUFFER_RING)
+    {
+        if (!_txBuffer || _txBufferSize < 2) return false;
+        ptr = _txBuffer;
+        len = _txPosition;
+        return true;
+    }
+
+    if (!_txBuffer || _txBufferSize < 2) return false;
+
+    uint32_t tail1, tail2, head;
+    do
+    {
+        tail1 = _txTail;
+        head  = _txHead;
+        tail2 = _txTail;
+    } while (tail1 != tail2);
+
+    uint32_t used = (head >= tail1) ? (head - tail1) : (_txBufferSize - (tail1 - head));
+    uint32_t toEnd = _txBufferSize - tail1;
+
+    len = (used < toEnd) ? used : toEnd;
+    ptr = (len == 0) ? nullptr : &_txBuffer[tail1];
+    return true;
 }
 
 uint32_t Stream::rxContiguousSize() const
@@ -1078,8 +1118,17 @@ uint32_t Stream::rxContiguousSize() const
     if (_rxType != BUFFER_RING) return availableRx();
     if (!_rxBuffer || _rxBufferSize < 2) return 0;
 
-    uint32_t toEnd = _rxBufferSize - _rxTail;
-    return (_rxCount < toEnd) ? _rxCount : toEnd;
+    uint32_t tail1, tail2, head;
+    do
+    {
+        tail1 = _rxTail;
+        head  = _rxHead;
+        tail2 = _rxTail;
+    } while (tail1 != tail2);
+
+    uint32_t used = (head >= tail1) ? (head - tail1) : (_rxBufferSize - (tail1 - head));
+    uint32_t toEnd = _rxBufferSize - tail1;
+    return (used < toEnd) ? used : toEnd;
 }
 
 uint32_t Stream::freeTx() const
@@ -1153,29 +1202,36 @@ bool Stream::pushBackTxBuffer(const char* data, uint32_t dataSize)
 
     bool ret = (errorCode == STREAM_OK);
 
-    if(_txType == BUFFER_RING)
+    // TX producer-safe (main loop)
+    if (_txType == BUFFER_RING)
     {
-        uint32_t free = freeTx();
-        if(free < dataSize)
+        const uint32_t cap = _txBufferSize - 1;
+
+        if (dataSize > cap)
         {
+            data += (dataSize - cap);
+            dataSize = cap;
             errorCode = STREAM_ERR_OVERFLOW_OR_SHORT;
             ret = false;
-            uint32_t need = dataSize - free;
-            if(need > _txCount) need = _txCount;
-            removeFrontTxBuffer(need);
         }
 
-        // Now we have space
-        for(uint32_t i=0; i<dataSize; i++)
+        const uint32_t free = freeTx();
+        if (dataSize > free)
         {
-            _txBuffer[_txHead] = data[i];
-            _txHead = (_txHead + 1) % _txBufferSize;
-            if(_txCount < (_txBufferSize - 1))
-                _txCount++;
+            errorCode = STREAM_ERR_OVERFLOW_OR_SHORT;
+            return false;
         }
 
-        // keep '\0' reserved byte behavior
-        _txBuffer[_txHead] = '\0';
+        const uint32_t head = _txHead;
+        const uint32_t toEnd = _txBufferSize - head;
+        const uint32_t first = (dataSize < toEnd) ? dataSize : toEnd;
+
+        std::memcpy(&_txBuffer[head], data, first);
+        if (dataSize > first)
+            std::memcpy(&_txBuffer[0], data + first, dataSize - first);
+
+        STREAM_DMB();
+        _txHead = (head + dataSize) % _txBufferSize;
         return ret;
     }
 
@@ -1218,27 +1274,36 @@ bool Stream::pushBackRxBuffer(const char* data, uint32_t dataSize)
 
     bool ret = (errorCode == STREAM_OK);
 
-    if(_rxType == BUFFER_RING)
+    // RX producer-safe (ISR)
+    if (_rxType == BUFFER_RING)
     {
-        uint32_t free = freeRx();
-        if(free < dataSize)
+        const uint32_t cap = _rxBufferSize - 1;
+
+        if (dataSize > cap)
         {
+            data += (dataSize - cap);
+            dataSize = cap;
             errorCode = STREAM_ERR_OVERFLOW_OR_SHORT;
             ret = false;
-            uint32_t need = dataSize - free;
-            if(need > _rxCount) need = _rxCount;
-            removeFrontRxBuffer(need);
         }
 
-        for(uint32_t i=0; i<dataSize; i++)
+        const uint32_t free = freeRx();
+        if (dataSize > free)
         {
-            _rxBuffer[_rxHead] = data[i];
-            _rxHead = (_rxHead + 1) % _rxBufferSize;
-            if(_rxCount < (_rxBufferSize - 1))
-                _rxCount++;
+            errorCode = STREAM_ERR_OVERFLOW_OR_SHORT;
+            return false;
         }
 
-        _rxBuffer[_rxHead] = '\0';
+        const uint32_t head = _rxHead;
+        const uint32_t toEnd = _rxBufferSize - head;
+        const uint32_t first = (dataSize < toEnd) ? dataSize : toEnd;
+
+        std::memcpy(&_rxBuffer[head], data, first);
+        if (dataSize > first)
+            std::memcpy(&_rxBuffer[0], data + first, dataSize - first);
+
+        STREAM_DMB();
+        _rxHead = (head + dataSize) % _rxBufferSize;
         return ret;
     }
 
@@ -1291,17 +1356,18 @@ bool Stream::popFrontTxBuffer(char* data, uint32_t dataSize)
         ret = false;
     }
 
-    if(_txType == BUFFER_RING)
+    if (_txType == BUFFER_RING)
     {
-        for(uint32_t i=0; i<dataSize; i++)
-        {
-            data[i] = _txBuffer[_txTail];
-            _txTail = (_txTail + 1) % _txBufferSize;
-            if(_txCount) _txCount--;
-        }
+        const uint32_t tail = _txTail;
+        const uint32_t toEnd = _txBufferSize - tail;
+        const uint32_t first = (dataSize < toEnd) ? dataSize : toEnd;
 
-        // keep internal terminator too
-        _txBuffer[_txHead] = '\0';
+        std::memcpy(data, &_txBuffer[tail], first);
+        if (dataSize > first)
+            std::memcpy(data + first, &_txBuffer[0], dataSize - first);
+
+        STREAM_DMB();
+        _txTail = (tail + dataSize) % _txBufferSize;
         return ret;
     }
 
@@ -1326,11 +1392,10 @@ bool Stream::removeFrontTxBuffer(uint32_t dataSize)
     uint32_t avail = availableTx();
     if (dataSize > avail) { errorCode = STREAM_ERR_PARAM; return false; }
 
-    if(_txType == BUFFER_RING)
+    if (_txType == BUFFER_RING)
     {
-        _txTail = (_txTail + dataSize) % _txBufferSize;
-        _txCount -= dataSize;
-        _txBuffer[_txHead] = '\0';
+        const uint32_t tail = _txTail;
+        _txTail = (tail + dataSize) % _txBufferSize;
         return true;
     }
 
@@ -1351,11 +1416,10 @@ bool Stream::removeFrontRxBuffer(uint32_t dataSize)
     uint32_t avail = availableRx();
     if (dataSize > avail) { errorCode = STREAM_ERR_PARAM; return false; }
 
-    if(_rxType == BUFFER_RING)
+    if (_rxType == BUFFER_RING)
     {
-        _rxTail = (_rxTail + dataSize) % _rxBufferSize;
-        _rxCount -= dataSize;
-        _rxBuffer[_rxHead] = '\0';
+        const uint32_t tail = _rxTail;
+        _rxTail = (tail + dataSize) % _rxBufferSize;
         return true;
     }
 
@@ -1431,16 +1495,18 @@ bool Stream::popFrontRxBuffer(char* data, uint32_t dataSize)
 
     if (dataSize == 0) return ret;
 
-    if(_rxType == BUFFER_RING)
+    if (_rxType == BUFFER_RING)
     {
-        for(uint32_t i=0; i<dataSize; i++)
-        {
-            data[i] = _rxBuffer[_rxTail];
-            _rxTail = (_rxTail + 1) % _rxBufferSize;
-            if(_rxCount) _rxCount--;
-        }
-       
-        _rxBuffer[_rxHead] = '\0';
+        const uint32_t tail = _rxTail;
+        const uint32_t toEnd = _rxBufferSize - tail;
+        const uint32_t first = (dataSize < toEnd) ? dataSize : toEnd;
+
+        std::memcpy(data, &_rxBuffer[tail], first);
+        if (dataSize > first)
+            std::memcpy(data + first, &_rxBuffer[0], dataSize - first);
+
+        STREAM_DMB();
+        _rxTail = (tail + dataSize) % _rxBufferSize;
         return ret;
     }
 
@@ -1500,24 +1566,48 @@ bool Stream::popAllRxBuffer(char* data, uint32_t maxSize)
 #endif
 
 uint32_t Stream::availableTx() const
-{   
-    if(!_txBuffer || _txBufferSize < 2) return 0;
-    if(_txType == BUFFER_RING)
-        return _txCount;
+{
+    if (!_txBuffer || _txBufferSize < 2) return 0;
 
-    // return strlen(_txBuffer);
+    if (_txType == BUFFER_RING)
+    {
+        // Snapshot tail stable against TX-complete ISR
+        uint32_t tail1, tail2, head;
+        do
+        {
+            tail1 = _txTail;
+            head  = _txHead;
+            tail2 = _txTail;
+        } while (tail1 != tail2);
+
+        uint32_t used = (head >= tail1) ? (head - tail1) : (_txBufferSize - (tail1 - head));
+        if (used >= _txBufferSize) used = _txBufferSize - 1; // paranoia clamp
+        return used;
+    }
+
     return _txPosition;
 }
 
 uint32_t Stream::availableRx() const
 {
-    if(!_rxBuffer || _rxBufferSize < 2) return 0;
-    if(_rxType == BUFFER_RING)
-        return _rxCount;
-        
-    // return strlen(_rxBuffer);
+    if (!_rxBuffer || _rxBufferSize < 2) return 0;
+
+    if (_rxType == BUFFER_RING)
+    {
+        uint32_t tail1, tail2, head;
+        do
+        {
+            tail1 = _rxTail;
+            head  = _rxHead;
+            tail2 = _rxTail;
+        } while (tail1 != tail2);
+
+        uint32_t used = (head >= tail1) ? (head - tail1) : (_rxBufferSize - (tail1 - head));
+        if (used >= _rxBufferSize) used = _rxBufferSize - 1;
+        return used;
+    }
+
     return _rxPosition;
 }
-
 
 
