@@ -877,7 +877,7 @@ bool Stream_utility::checkValueType(const char *data, dataTypeEnum type)
     return true;
 }
 
-#if defined(__linux__)
+#if defined(_PLATFORM_PC_)
     std::string Stream_utility::dataValueToString(const dataValueUnion& value, const dataTypeEnum type)
     {
         switch (type)
@@ -1326,7 +1326,7 @@ bool Stream::pushBackRxBuffer(const char* data, uint32_t dataSize)
     return ret;
 }
 
-#if defined(__linux__)
+#if defined(_PLATFORM_PC_)
     bool Stream::pushBackTxBuffer(const std::string& data)
     {
         return pushBackTxBuffer(data.c_str(), data.size());
@@ -1430,7 +1430,7 @@ bool Stream::removeFrontRxBuffer(uint32_t dataSize)
     return true;
 }
 
-#if defined(__linux__)
+#if defined(_PLATFORM_PC_)
     bool Stream::popFrontTxBuffer(std::string& out, uint32_t dataSize)
     {
         out.clear();
@@ -1468,7 +1468,7 @@ bool Stream::popAllTxBuffer(char* data, uint32_t maxSize)
     return popFrontTxBuffer(data, maxSize);
 }
 
-#if defined(__linux__)
+#if defined(_PLATFORM_PC_)
     bool Stream::popAllTxBuffer(std::string& data)
     {
         // works for linear + ring
@@ -1521,7 +1521,7 @@ bool Stream::popFrontRxBuffer(char* data, uint32_t dataSize)
     return ret;
 }
 
-#if defined(__linux__)
+#if defined(_PLATFORM_PC_)
     bool Stream::popFrontRxBuffer(std::string& out, uint32_t dataSize)
     {
         out.clear();
@@ -1558,7 +1558,7 @@ bool Stream::popAllRxBuffer(char* data, uint32_t maxSize)
     return popFrontRxBuffer(data, maxSize);
 }
 
-#if defined(__linux__)
+#if defined(_PLATFORM_PC_)
     bool Stream::popAllRxBuffer(std::string& data)
     {
         return popFrontRxBuffer(data, availableRx());

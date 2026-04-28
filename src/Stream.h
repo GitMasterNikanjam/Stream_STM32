@@ -1,5 +1,9 @@
 #pragma once
 
+#if defined(__linux__) || defined(_WIN32) && !defined(__CC_ARM) && !defined(__ARMCOMPILER_VERSION)
+    #define _PLATFORM_PC_
+#endif
+
 /**
  * @file Stream.h
  * @brief Lightweight TX/RX buffer manager for embedded targets.
@@ -28,7 +32,7 @@
 #include <cstdint>  ///< Defines fixed-width integer types (int32_t, uint64_t, etc.) and limits for platform-independent integer handling.
 #include <cstddef>  ///< size_t
 
-#if defined(__linux__)
+#if defined(_PLATFORM_PC_)
     #include <string>   // Provides the std::string class for working with dynamic strings in C++
 #endif
 
@@ -464,7 +468,7 @@ bool checkValueType(const char *data, const char *type);
  *  */ 
 bool checkValueType(const char *data, const dataTypeEnum type);
 
-#if defined(__linux__)
+#if defined(_PLATFORM_PC_)
     /// @brief Helper function to convert dataValueUnion to string based on ParamType_t
     std::string dataValueToString(const dataValueUnion& value, const dataTypeEnum type);
 #endif
@@ -685,7 +689,7 @@ public:
      */
     bool pushBackTxBuffer(const char* data, uint32_t dataSize = 1);
 
-    #if defined(__linux__)
+    #if defined(_PLATFORM_PC_)
         /**
          * @brief Push back certain number charecter in to TxBuffer.
          * @param data is a string pointer that you want to push back.
@@ -706,7 +710,7 @@ public:
      */
     bool pushBackRxBuffer(const char* data, uint32_t dataSize = 1);
 
-    #if defined(__linux__)
+    #if defined(_PLATFORM_PC_)
         /**
          * @brief Push back certain number charecter in to RxBuffer.
          * @param data is a string pointer that you want to push back.
@@ -735,7 +739,7 @@ public:
      *  */
     bool popFrontTxBuffer(char* data, uint32_t dataSize = 1);
 
-    #if defined(__linux__)
+    #if defined(_PLATFORM_PC_)
         /**
          * @brief Pop certain number elements from front of RX buffer and remove them.
          * @param data is the string that poped front.
@@ -755,7 +759,7 @@ public:
      *  */
     bool popFrontRxBuffer(char* data, uint32_t dataSize = 1);
 
-    #if defined(__linux__)
+    #if defined(_PLATFORM_PC_)
         /**
          * @brief Pop all elements from front of TX buffer and remove them.
          * @param data is the string that poped front.
@@ -774,7 +778,7 @@ public:
      *  */
     bool popAllTxBuffer(char* data, uint32_t maxSize);
 
-    #if defined(__linux__)
+    #if defined(_PLATFORM_PC_)
         /**
          * @brief Pop all elements from front of RX buffer and remove them.
          * @param data is the string that poped front.
