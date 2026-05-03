@@ -807,6 +807,29 @@ public:
      */
     uint32_t availableRx() const;
 
+    /**
+     * @brief Safely peek at a byte in the RX buffer using logical offset from the current read position.
+     * @param index Logical offset from the RX tail.
+     * @return The byte at that logical position, or 0 if out of range.
+     */
+    char peekRx(size_t index) const;
+
+    /**
+     * @brief Find the first occurrence of a delimiter in the RX buffer.
+     * @param delimiter Character to search for.
+     * @return Logical index from RX tail, or SIZE_MAX if not found.
+     */
+    size_t findRx(char delimiter) const;
+
+    /**
+     * @brief Copy RX data until a delimiter is found, excluding the delimiter.
+     * @param delimiter Stop character.
+     * @param dst Destination buffer.
+     * @param dstSize Size of destination buffer including null terminator.
+     * @return Number of copied bytes, or SIZE_MAX on failure.
+     */
+    size_t copyRxUntil(char delimiter, char* dst, size_t dstSize) const;
+
 private:
 
     /// @brief TX buffer base pointer

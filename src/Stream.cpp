@@ -919,7 +919,7 @@ void Stream_utility::dataValueToString(char *str, const dataValueUnion& value, c
             sprintf(str, "%u", value.uint16Value);
             break;
         case uint32Type:
-            sprintf(str, "%u", value.uint32Value);
+            sprintf(str, "%lu", value.uint32Value);
             break;
         case int8Type:
             sprintf(str, "%d", value.int8Value);
@@ -928,7 +928,7 @@ void Stream_utility::dataValueToString(char *str, const dataValueUnion& value, c
             sprintf(str, "%d", value.int16Value);
             break;
         case int32Type:
-            sprintf(str, "%d", value.int32Value);
+            sprintf(str, "%ld", value.int32Value);
             break;
         case floatType:
             sprintf(str, "%f", value.floatValue);
@@ -1610,4 +1610,76 @@ uint32_t Stream::availableRx() const
     return _rxPosition;
 }
 
+char Stream::peekRx(size_t index) const
+{
+    if (_rxBuffer == nullptr || _rxBufferSize < 2)
+        return 0;
 
+    uint32_t avail = availableRx();
+    if (index >= avail)
+        return 0;
+
+    if (_rxType == BUFFER_RING)
+    {
+        uint32_t physicalIndex = (_rxTail + static_cast<uint32_t>(index)) % _rxBufferSize;
+        return _rxBuffer[physicalIndex];
+    }
+
+    return _rxBuffer[index];
+}
+
+size_t Stream::findRx(char delimiter) const
+{
+    if (_rxBuffer == nullptr || _rxBufferSize < 2)
+        return SIZE_MAX;
+
+    uint32_t avail = availableRx();
+    for (size_t i = 0; i < avail; ++i)
+    {
+        if (peekRx(i) == delimiter)
+            return i;
+    }
+
+    return SIZE_MAX;
+}
+
+size_t Stream::copyRxUntil(char delimiter, char* dst, size_t dstSize) const
+{
+    if (dst == nullptr || dstSize == 0)
+        return SIZE_MAX;
+
+    uint32_t avail = availableRx();
+    if (avail == 0)
+    {
+        dst[0] = '\0';
+        return 0;
+    }
+
+    size_t copied = 0;
+
+    for (size_t i = 0; i < avail; ++i)
+    {
+        char c = peekRx(i);
+
+        if (c == delimiter)
+        {
+            if (copied < dstSize)
+                dst[copied] = '\0';
+            else
+                dst[dstSize - 1] = '\0';
+
+            return copied;
+        }
+
+        if (copied + 1 >= dstSize)
+        {
+            dst[dstSize - 1] = '\0';
+            return SIZE_MAX;
+        }
+
+        dst[copied++] = c;
+    }
+
+    dst[copied < dstSize ? copied : dstSize - 1] = '\0';
+    return SIZE_MAX;
+}
