@@ -919,7 +919,7 @@ void Stream_utility::dataValueToString(char *str, const dataValueUnion& value, c
             sprintf(str, "%u", value.uint16Value);
             break;
         case uint32Type:
-            sprintf(str, "%lu", value.uint32Value);
+            sprintf(str, "%lu", (unsigned long)value.uint32Value);
             break;
         case int8Type:
             sprintf(str, "%d", value.int8Value);
@@ -928,7 +928,7 @@ void Stream_utility::dataValueToString(char *str, const dataValueUnion& value, c
             sprintf(str, "%d", value.int16Value);
             break;
         case int32Type:
-            sprintf(str, "%ld", value.int32Value);
+            sprintf(str, "%ld", (long)value.int32Value);
             break;
         case floatType:
             sprintf(str, "%f", value.floatValue);
