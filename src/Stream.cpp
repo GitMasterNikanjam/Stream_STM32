@@ -118,7 +118,7 @@ void Stream_utility::trimString(const char* data, char* buffer, uint32_t max_siz
         trimmed_len = max_size - 1;
 
     // Copy the trimmed string into the buffer and null-terminate
-    std::memcpy(buffer, data + start, trimmed_len);
+    std::memmove(buffer, data + start, trimmed_len);
     buffer[trimmed_len] = '\0';  // Null-terminate the string
 }
 
