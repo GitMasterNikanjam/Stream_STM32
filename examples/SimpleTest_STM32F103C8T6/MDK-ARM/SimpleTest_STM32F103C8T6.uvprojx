@@ -340,7 +340,7 @@
               <MiscControls></MiscControls>
               <Define>USE_HAL_DRIVER,STM32F103xB</Define>
               <Undefine></Undefine>
-              <IncludePath>../Core/Inc;../Drivers/STM32F1xx_HAL_Driver/Inc;../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy;../Drivers/CMSIS/Device/ST/STM32F1xx/Include;../Drivers/CMSIS/Include;..\..\..\..\Stream_STM32</IncludePath>
+              <IncludePath>../Core/Inc;../Drivers/STM32F1xx_HAL_Driver/Inc;../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy;../Drivers/CMSIS/Device/ST/STM32F1xx/Include;../Drivers/CMSIS/Include;..\..\..\src</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -497,7 +497,7 @@
             <File>
               <FileName>Stream.cpp</FileName>
               <FileType>8</FileType>
-              <FilePath>..\..\..\Stream.cpp</FilePath>
+              <FilePath>..\..\..\src\Stream.cpp</FilePath>
             </File>
           </Files>
         </Group>

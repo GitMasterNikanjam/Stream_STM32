@@ -5,6 +5,7 @@
 #include <cctype>
 #include <limits>
 #include <cstdlib>
+#include <cerrno>
 
 // #####################################################################################################
 // Public General functions
@@ -12,6 +13,8 @@
 // Manual strnlen() function for Keil
 size_t Stream_utility::safe_strnlen(const char* str, size_t max_len) 
 {
+    if (str == nullptr) return 0;
+
     size_t len = 0;
     while (len < max_len && str[len] != '\0') 
     {
@@ -124,7 +127,7 @@ void Stream_utility::trimString(const char* data, char* buffer, uint32_t max_siz
 
 bool Stream_utility::splitString(const char* data, char delimiter, char* firstSection, size_t firstSize, char* secondSection, size_t secondSize) 
 {
-    if (data == nullptr) 
+    if (data == nullptr || delimiter == '\0')
     {
         return false;
     }
@@ -141,22 +144,18 @@ bool Stream_utility::splitString(const char* data, char delimiter, char* firstSe
     const char* secondStart = delimiterPos + 1;
     size_t secondLength = std::strlen(secondStart);
 
+    if (firstSection != nullptr && firstLength >= firstSize) return false;
+    if (secondSection != nullptr && secondLength >= secondSize) return false;
+
     if(firstSection != nullptr)
     {
-        if (firstLength + 1 > firstSize)
-            return false;
-
-        std::memcpy(firstSection, data, firstLength);
+        std::memmove(firstSection, data, firstLength);
         firstSection[firstLength] = '\0';       // Null-terminate the string
     }
 
     if(secondSection != nullptr)
     {
-        if (secondLength + 1 > secondSize)
-            return false;
-
-
-        std::memcpy(secondSection, secondStart, secondLength + 1);
+        std::memmove(secondSection, secondStart, secondLength + 1);
     }
     
     return true;
@@ -164,6 +163,8 @@ bool Stream_utility::splitString(const char* data, char delimiter, char* firstSe
 
 bool Stream_utility::isWhitespaceOnly(const char* str) 
 {
+    if (str == nullptr) return false;
+
      while (*str) 
      {
         if (*str != ' ' && *str != '\t' && *str != '\n' && *str != '\v' && *str != '\f' && *str != '\r') 
@@ -180,33 +181,22 @@ bool Stream_utility::validateRow(const char* data, size_t expectedColumnCount)
     if (!data || expectedColumnCount == 0 || *data == '\0')
         return false;
 
-    const size_t n = std::strlen(data);
-    char* fields = new char[n + 1];
-    std::strcpy(fields, data);
-
-    size_t fieldCount = 1;      // number of columns = commas+1
-
-    char* cursor = fields;
-
-    while (true)
+    size_t fieldCount = 1;
+    bool hasContent = false;
+    for (const char* cursor = data; *cursor != '\0'; ++cursor)
     {
-        char* comma = std::strchr(cursor, ',');
-        if (!comma) break;
-
-        *comma = '\0';
-
-        trimString(cursor);
-        if (isWhitespaceOnly(cursor)) { delete[] fields; return false; }
-
-        fieldCount++;
-        cursor = comma + 1;
+        if (*cursor == ',')
+        {
+            if (!hasContent) return false;
+            ++fieldCount;
+            hasContent = false;
+        }
+        else if (!std::isspace(static_cast<unsigned char>(*cursor)))
+        {
+            hasContent = true;
+        }
     }
-
-    trimString(cursor);
-    if (isWhitespaceOnly(cursor)) { delete[] fields; return false; }
-
-    delete[] fields;
-    return (fieldCount == expectedColumnCount);
+    return hasContent && fieldCount == expectedColumnCount;
 }
 
 bool Stream_utility::isUInt8(const char* str) 
@@ -216,12 +206,11 @@ bool Stream_utility::isUInt8(const char* str)
         return false;
     }
 
-    unsigned int value = 0;
-    if (std::sscanf(str, "%u", &value) == 1 && value <= std::numeric_limits<uint8_t>::max()) 
-    {
-        return true;
-    }
-    return false;
+    errno = 0;
+    char* endPtr;
+    const unsigned long value = std::strtoul(str, &endPtr, 10);
+    return errno != ERANGE && *endPtr == '\0' &&
+           value <= std::numeric_limits<uint8_t>::max();
 }
 
 bool Stream_utility::isUInt16(const char* str) 
@@ -231,12 +220,11 @@ bool Stream_utility::isUInt16(const char* str)
         return false;
     }
 
-    unsigned int value = 0;
-    if (std::sscanf(str, "%u", &value) == 1 && value <= std::numeric_limits<uint16_t>::max()) 
-    {
-        return true;
-    }
-    return false;
+    errno = 0;
+    char* endPtr;
+    const unsigned long value = std::strtoul(str, &endPtr, 10);
+    return errno != ERANGE && *endPtr == '\0' &&
+           value <= std::numeric_limits<uint16_t>::max();
 }
 
 bool Stream_utility::isUInt32(const char* str) 
@@ -251,11 +239,12 @@ bool Stream_utility::isUInt32(const char* str)
         return false;
     }
 
+    errno = 0;
     char* endPtr;
     unsigned long value = strtoul(str, &endPtr, 10);
 
     // Ensure the whole string is processed and within uint32_t range
-    return (*endPtr == '\0' && value <= std::numeric_limits<uint32_t>::max());
+    return (errno != ERANGE && *endPtr == '\0' && value <= std::numeric_limits<uint32_t>::max());
 }
 
 bool Stream_utility::isUInt64(const char* str) 
@@ -265,12 +254,10 @@ bool Stream_utility::isUInt64(const char* str)
         return false;
     }
 
-    unsigned long long value = 0;
-    if (std::sscanf(str, "%llu", &value) == 1 && value <= std::numeric_limits<uint64_t>::max()) 
-    {
-        return true;
-    }
-    return false;
+    errno = 0;
+    char* endPtr;
+    std::strtoull(str, &endPtr, 10);
+    return errno != ERANGE && *endPtr == '\0';
 }
 
 bool Stream_utility::isInt8(const char* str) 
@@ -280,12 +267,12 @@ bool Stream_utility::isInt8(const char* str)
         return false;
     }
 
-    int value = 0;
-    if (std::sscanf(str, "%d", &value) == 1 && value >= std::numeric_limits<int8_t>::min() && value <= std::numeric_limits<int8_t>::max()) 
-    {
-        return true;
-    }
-    return false;
+    errno = 0;
+    char* endPtr;
+    const long value = std::strtol(str, &endPtr, 10);
+    return errno != ERANGE && *endPtr == '\0' &&
+           value >= std::numeric_limits<int8_t>::min() &&
+           value <= std::numeric_limits<int8_t>::max();
 }
 
 bool Stream_utility::isInt16(const char* str) 
@@ -295,12 +282,12 @@ bool Stream_utility::isInt16(const char* str)
         return false;
     }
 
-    int value = 0;
-    if (std::sscanf(str, "%d", &value) == 1 && value >= std::numeric_limits<int16_t>::min() && value <= std::numeric_limits<int16_t>::max()) 
-    {
-        return true;
-    }
-    return false;
+    errno = 0;
+    char* endPtr;
+    const long value = std::strtol(str, &endPtr, 10);
+    return errno != ERANGE && *endPtr == '\0' &&
+           value >= std::numeric_limits<int16_t>::min() &&
+           value <= std::numeric_limits<int16_t>::max();
 }
 
 bool Stream_utility::isInt32(const char* str) 
@@ -310,12 +297,12 @@ bool Stream_utility::isInt32(const char* str)
         return false;
     }
 
-    long value = 0;
-    if (std::sscanf(str, "%ld", &value) == 1 && value >= std::numeric_limits<int32_t>::min() && value <= std::numeric_limits<int32_t>::max()) 
-    {
-        return true;
-    }
-    return false;
+    errno = 0;
+    char* endPtr;
+    const long value = std::strtol(str, &endPtr, 10);
+    return errno != ERANGE && *endPtr == '\0' &&
+           value >= std::numeric_limits<int32_t>::min() &&
+           value <= std::numeric_limits<int32_t>::max();
 }
 
 bool Stream_utility::isInt64(const char* str) 
@@ -325,12 +312,10 @@ bool Stream_utility::isInt64(const char* str)
         return false;
     }
 
-    long long value = 0;
-    if (std::sscanf(str, "%lld", &value) == 1 && value >= std::numeric_limits<int64_t>::min() && value <= std::numeric_limits<int64_t>::max()) 
-    {
-        return true;
-    }
-    return false;
+    errno = 0;
+    char* endPtr;
+    std::strtoll(str, &endPtr, 10);
+    return errno != ERANGE && *endPtr == '\0';
 }
 
 bool Stream_utility::isFloat(const char* str) 
@@ -339,9 +324,11 @@ bool Stream_utility::isFloat(const char* str)
     {
         return false;
     }
-    
-    float value = 0.0f;
-    return std::sscanf(str, "%f", &value) == 1;
+
+    errno = 0;
+    char* endPtr;
+    std::strtof(str, &endPtr);
+    return errno != ERANGE && *endPtr == '\0';
 }
 
 bool Stream_utility::isDouble(const char* str) 
@@ -351,25 +338,30 @@ bool Stream_utility::isDouble(const char* str)
         return false;
     }
 
-    double value = 0.0;
-    return std::sscanf(str, "%lf", &value) == 1;
+    errno = 0;
+    char* endPtr;
+    std::strtod(str, &endPtr);
+    return errno != ERANGE && *endPtr == '\0';
 }
 
 bool Stream_utility::isBoolean(const char* str) 
 {
     if (str == nullptr) return false;
 
-    // Compare the string directly with both upper and lowercase versions of "true" and "false"
-    return (std::strcmp(str, "true") == 0 || std::strcmp(str, "TRUE") == 0 || std::strcmp(str, "false") == 0 || std::strcmp(str, "FALSE") == 0);
+    return (std::strcmp(str, "true") == 0 || std::strcmp(str, "TRUE") == 0 ||
+            std::strcmp(str, "false") == 0 || std::strcmp(str, "FALSE") == 0 ||
+            std::strcmp(str, "1") == 0 || std::strcmp(str, "0") == 0);
 }
 
 void Stream_utility::decimalToString(double value, uint8_t precision, char* output) 
 {
+    if (output == nullptr) return;
     std::sprintf(output, "%.*f", precision, value);
 }
 
 void Stream_utility::decimalToString(float value, uint8_t precision, char* output) 
 {
+    if (output == nullptr) return;
     std::sprintf(output, "%.*f", precision, value);
 }
 
@@ -386,6 +378,7 @@ bool Stream_utility::isNumber(const char* str)
     }
 
     uint8_t dotNumber = 0;
+    bool hasDigit = false;
 
     while (*str) 
     {
@@ -401,9 +394,13 @@ bool Stream_utility::isNumber(const char* str)
         {
             return false; // Return false if it's not a valid digit
         }
+        else
+        {
+            hasDigit = true;
+        }
         ++str;
     }
-    return true; // Return true if all characters are digits
+    return hasDigit;
 }
 
 bool Stream_utility::isIntiger(const char* str)
@@ -417,6 +414,8 @@ bool Stream_utility::isIntiger(const char* str)
             ++str;
         }
     }
+
+    if (*str == '\0') return false;
 
     while (*str) 
     {
@@ -442,6 +441,8 @@ bool Stream_utility::isUintiger(const char* str)
         }
     }
 
+    if (*str == '\0') return false;
+
     while (*str) 
     {
         // Check if the character is not a digit (i.e., not '0' to '9')
@@ -456,6 +457,8 @@ bool Stream_utility::isUintiger(const char* str)
 
 bool Stream_utility::endsWith(const char* str, const char* suffix) 
 {
+    if (str == nullptr || suffix == nullptr) return false;
+
     size_t strLen = std::strlen(str);
     size_t suffixLen = std::strlen(suffix);
     if (strLen >= suffixLen) 
@@ -467,6 +470,8 @@ bool Stream_utility::endsWith(const char* str, const char* suffix)
 
 bool Stream_utility::stringToUint8(const char* str, uint8_t* num)
 {
+    if (num == nullptr) return false;
+
     if(isUInt8(str) == false)
     {
         return false;
@@ -492,6 +497,8 @@ bool Stream_utility::stringToUint8(const char* str, uint8_t* num)
 
 bool Stream_utility::stringToUint16(const char* str, uint16_t* num)
 {
+    if (num == nullptr) return false;
+
     if(isUInt16(str) == false)
     {
         return false;
@@ -542,6 +549,8 @@ bool Stream_utility::stringToUint32(const char* str, uint32_t* num)
 
 bool Stream_utility::stringToUint64(const char* str, uint64_t* num)
 {
+    if (num == nullptr) return false;
+
     if(isUInt64(str) == false)
     {
         return false;
@@ -562,6 +571,8 @@ bool Stream_utility::stringToUint64(const char* str, uint64_t* num)
 
 bool Stream_utility::stringToInt8(const char* str, int8_t* num)
 {
+    if (num == nullptr) return false;
+
     if(isInt8(str) == false)
     {
         return false;
@@ -587,6 +598,8 @@ bool Stream_utility::stringToInt8(const char* str, int8_t* num)
 
 bool Stream_utility::stringToInt16(const char* str, int16_t* num)
 {
+    if (num == nullptr) return false;
+
     if(isInt16(str) == false)
     {
         return false;
@@ -612,6 +625,8 @@ bool Stream_utility::stringToInt16(const char* str, int16_t* num)
 
 bool Stream_utility::stringToInt32(const char* str, int32_t* num)
 {
+    if (num == nullptr) return false;
+
     if(isInt32(str) == false)
     {
         return false;
@@ -632,6 +647,8 @@ bool Stream_utility::stringToInt32(const char* str, int32_t* num)
 
 bool Stream_utility::stringToInt64(const char* str, int64_t* num)
 {
+    if (num == nullptr) return false;
+
     if(isInt64(str) == false)
     {
         return false;
@@ -652,6 +669,8 @@ bool Stream_utility::stringToInt64(const char* str, int64_t* num)
 
 bool Stream_utility::stringToFloat(const char* str, float* num)
 {
+    if (num == nullptr) return false;
+
     if(isFloat(str) == false)
     {
         return false;
@@ -671,6 +690,8 @@ bool Stream_utility::stringToFloat(const char* str, float* num)
 
 bool Stream_utility::stringToDouble(const char* str, double* num)
 {
+    if (num == nullptr) return false;
+
     if(isDouble(str) == false)
     {
         return false;
@@ -691,6 +712,8 @@ bool Stream_utility::stringToDouble(const char* str, double* num)
 
 bool Stream_utility::stringToNumber(const char* str, dataValueUnion* num, dataTypeEnum type)
 {
+    if (str == nullptr || num == nullptr) return false;
+
     // Convert value based on the parameter type
     switch (type)
     {
@@ -755,12 +778,22 @@ bool Stream_utility::stringToNumber(const char* str, dataValueUnion* num, dataTy
             }
         break;
         case boolType:
-            // Compare using std::strcmp instead of == for string content comparison
+            if (!isBoolean(str))
+                return false;
             num->boolValue = (std::strcmp(str, "true") == 0 || std::strcmp(str, "TRUE") == 0 || std::strcmp(str, "1") == 0);
         break;
         case stringType:
-            std::strncpy(num->stringValue, str, sizeof(num->stringValue) - 1);
-            num->stringValue[sizeof(num->stringValue) - 1] = '\0';  // Ensure null termination
+        {
+            const size_t length = safe_strnlen(str, sizeof(num->stringValue));
+            if (length >= sizeof(num->stringValue))
+                return false;
+            std::memmove(num->stringValue, str, length + 1);
+        }
+        break;
+        case charType:
+            if (str[0] == '\0' || str[1] != '\0') return false;
+            num->stringValue[0] = str[0];
+            num->stringValue[1] = '\0';
         break;
         default:
             return false;
@@ -771,6 +804,8 @@ bool Stream_utility::stringToNumber(const char* str, dataValueUnion* num, dataTy
 
 bool Stream_utility::checkValueType(const char *data, const char *type)
 {
+    if (data == nullptr || type == nullptr) return false;
+
     if(strcmp(type, "uint8") == 0)
     {
         return isUInt8(data);
@@ -811,6 +846,10 @@ bool Stream_utility::checkValueType(const char *data, const char *type)
     {
         return isDouble(data);
     }
+        else if(strcmp(type, "char") == 0)
+    {
+        return data[0] != '\0' && data[1] == '\0';
+    }
         else if(strcmp(type, "string") == 0)
     {
         return true;
@@ -829,6 +868,8 @@ bool Stream_utility::checkValueType(const char *data, const char *type)
 
 bool Stream_utility::checkValueType(const char *data, dataTypeEnum type)
 {
+    if (data == nullptr) return false;
+
     switch(type)
     {
         case uint8Type:
@@ -862,7 +903,7 @@ bool Stream_utility::checkValueType(const char *data, dataTypeEnum type)
             return isDouble(data);
         break;
         case charType:
-            return true;
+            return data[0] != '\0' && data[1] == '\0';
         break;
         case stringType:
             return true;
@@ -888,12 +929,16 @@ bool Stream_utility::checkValueType(const char *data, dataTypeEnum type)
                 return std::to_string(value.uint16Value);
             case uint32Type:
                 return std::to_string(value.uint32Value);
+            case uint64Type:
+                return std::to_string(value.uint64Value);
             case int8Type:
                 return std::to_string(value.int8Value);
             case int16Type:
                 return std::to_string(value.int16Value);
             case int32Type:
                 return std::to_string(value.int32Value);
+            case int64Type:
+                return std::to_string(value.int64Value);
             case floatType:
                 return std::to_string(value.floatValue);
             case doubleType:
@@ -902,6 +947,8 @@ bool Stream_utility::checkValueType(const char *data, dataTypeEnum type)
                 return value.boolValue ? "true" : "false";
             case stringType:
                 return std::string(value.stringValue);
+            case charType:
+                return std::string(value.stringValue, 1);
             default:
                 return "Unsupported Type";
         }
@@ -910,6 +957,8 @@ bool Stream_utility::checkValueType(const char *data, dataTypeEnum type)
 
 void Stream_utility::dataValueToString(char *str, const dataValueUnion& value, const dataTypeEnum type)
 {
+    if (str == nullptr) return;
+
     switch (type)
     {
         case uint8Type:
@@ -921,6 +970,9 @@ void Stream_utility::dataValueToString(char *str, const dataValueUnion& value, c
         case uint32Type:
             sprintf(str, "%lu", (unsigned long)value.uint32Value);
             break;
+        case uint64Type:
+            sprintf(str, "%llu", (unsigned long long)value.uint64Value);
+            break;
         case int8Type:
             sprintf(str, "%d", value.int8Value);
             break;
@@ -929,6 +981,9 @@ void Stream_utility::dataValueToString(char *str, const dataValueUnion& value, c
             break;
         case int32Type:
             sprintf(str, "%ld", (long)value.int32Value);
+            break;
+        case int64Type:
+            sprintf(str, "%lld", (long long)value.int64Value);
             break;
         case floatType:
             sprintf(str, "%f", value.floatValue);
@@ -948,6 +1003,9 @@ void Stream_utility::dataValueToString(char *str, const dataValueUnion& value, c
             break;
         case stringType:
             sprintf(str, "%s", value.stringValue);
+            break;
+        case charType:
+            sprintf(str, "%c", value.stringValue[0]);
             break;
         default:
             sprintf(str, "Unsupported Type");
@@ -1244,6 +1302,7 @@ bool Stream::pushBackTxBuffer(const char* data, uint32_t dataSize)
         uint32_t need = dataSize - free;
         if(need > _txPosition) need = _txPosition;
         removeFrontTxBuffer(need);
+        errorCode = STREAM_ERR_OVERFLOW_OR_SHORT;
     }
 
     // re-check space
@@ -1316,6 +1375,7 @@ bool Stream::pushBackRxBuffer(const char* data, uint32_t dataSize)
         uint32_t need = dataSize - free;
         if(need > _rxPosition) need = _rxPosition;
         removeFrontRxBuffer(need);
+        errorCode = STREAM_ERR_OVERFLOW_OR_SHORT;
     }
     free = freeRx();
     if (free < dataSize) { errorCode = STREAM_ERR_OVERFLOW_OR_SHORT; return false; }
@@ -1459,13 +1519,15 @@ bool Stream::removeFrontRxBuffer(uint32_t dataSize)
             return false;
 
         out.swap(tmp);
+        if (!ret) errorCode = STREAM_ERR_OVERFLOW_OR_SHORT;
         return ret;
     }
 #endif
 
 bool Stream::popAllTxBuffer(char* data, uint32_t maxSize)
 {
-    return popFrontTxBuffer(data, maxSize);
+    const uint32_t available = availableTx();
+    return popFrontTxBuffer(data, (available < maxSize) ? available : maxSize);
 }
 
 #if defined(_PLATFORM_PC_)
@@ -1549,13 +1611,15 @@ bool Stream::popFrontRxBuffer(char* data, uint32_t dataSize)
             return false;
 
         out.swap(tmp);
+        if (!ret) errorCode = STREAM_ERR_OVERFLOW_OR_SHORT;
         return ret;
     }
 #endif
 
 bool Stream::popAllRxBuffer(char* data, uint32_t maxSize)
 {
-    return popFrontRxBuffer(data, maxSize);
+    const uint32_t available = availableRx();
+    return popFrontRxBuffer(data, (available < maxSize) ? available : maxSize);
 }
 
 #if defined(_PLATFORM_PC_)

@@ -16,8 +16,7 @@
  * @note This library is **non-owning**: it does NOT allocate/free TX/RX buffers.
  *       You must provide valid memory for buffers for the lifetime of the Stream object.
  *
- * @note No dynamic allocation is performed by Stream itself.
- *       (Exception: your Stream_utility::validateRow() currently uses `new[]` in .cpp.)
+ * @note No dynamic allocation is performed by Stream or Stream_utility::validateRow().
  *
  * @warning Concurrency / ISR note:
  * - If one context writes (ISR) and another reads (main loop), protect shared state
@@ -254,7 +253,6 @@ bool isWhitespaceOnly(const char* data);
  * @param[in] data Input CSV-like row.
  * @param[in] expectedColumnCount Expected number of comma-separated fields.
  * @return true if field count matches and no field is whitespace-only.
- * @warning Current implementation allocates a temporary copy using new[] in the .cpp.
  */
 bool validateRow(const char* data, size_t expectedColumnCount);
 
@@ -262,7 +260,7 @@ bool validateRow(const char* data, size_t expectedColumnCount);
 
 /**
  * @brief Check string format for boolean (true/false).
- * @param str can be: {true, false, TRUE, FALSE}
+ * @param str can be: {true, false, TRUE, FALSE, 1, 0}
  * @return true if succeeded.
  */
 bool isBoolean(const char* str);

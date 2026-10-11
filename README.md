@@ -1,397 +1,180 @@
-# Stream Library for STM32
+# Stream_STM32
 
-- This library can be used for data stream transmit/recieve management.
-- The main class is **Stream** for stream data management.
-- There are some general utility function for data stream.
+`Stream_STM32` is a small C++ byte-stream buffer for STM32 projects. It provides transmit (TX) and receive (RX) buffers, with either linear or ring-buffer behavior. The application supplies the memory used by each buffer.
 
----------------------------------------------------------------------------------------------
+## Features
 
-## Public General Functions
+- Independent TX and RX buffers.
+- Linear and ring buffer modes.
+- Byte-oriented push, peek, search, copy, and pop operations.
+- Optional `std::string` overloads on supported PC builds.
+- String validation, splitting, trimming, numeric conversion, and value formatting helpers.
+- No dynamic allocation for the core TX/RX buffers.
+
+## Add the library to a project
+
+Add `Libraries/Stream_STM32/src` to the compiler's include paths, add `src/Stream.cpp` to the build, and include the header:
 
 ```cpp
-/**
- * @namespace Stream_utility
- * @brief set of functions for working with C-style strings, performing operations such as trimming, splitting, validating formats, and type conversions.
- */
-namespace Stream_utility
-{
+#include "Stream.h"
+```
 
-/**
- * @brief Function to trim leading and trailing spaces from a string.
- * @param data is the Input string that wanted to trim
- * @return Trimed string.
- */
-char* trimString(const char* data);
+The library requires C++11 or newer. It is not header-only: `Stream.cpp` must be compiled and linked into the application.
 
-/**
- * @brief Function to trim leading and trailing spaces from a string.
- * @param data is the Input string that wanted to trim
- * @return Trimed string.
- */
-std::string trimString(std::string data);
+The repository includes example projects for STM32F407VGT6 and STM32F103C8T6 under `examples/`.
 
-/**
- * @brief Function to split a string by a delimiter in two section and return a splited strings.
- * @param firstSection is the first part of splited string.
- * @param secondSection is the second part of splited string.
- * @return true if splited succeeded.
- */
-bool splitString(const char* data, char delimiter, char* firstSection = nullptr, char* secondSection = nullptr);
+## Create a stream
 
-/**
- * @brief Function to check if a string is empty or contains only spaces.
- * @return true if succeeded.
- */
-bool isWhitespaceOnly(const char* data);
+The constructor accepts separate TX and RX memory regions and their sizes. The buffers must remain alive for as long as the `Stream` object uses them. The constructor clears the supplied buffers.
 
-/**
- * @brief Function to validate a string has the expected sections that splited by ',' character.
- * @note if any sections be empty space it returns false.
- * @return true if succeeded.
- */
-bool validateRow(const char* data, size_t expectedColumnCount);
+```cpp
+#include "Stream.h"
 
-/**
- * @brief Check string format for boolean (true/false).
- * @param str can be: {true, false, TRUE, FALSE}
- * @return true if succeeded.
- */
-bool isBoolean(const char* str);
+char txMemory[128];
+char rxMemory[128];
 
-/**
- * @brief Check string format for double.
- * @return true if succeeded.
- */
-bool isDouble(const char* str);
+Stream stream(txMemory, sizeof(txMemory),
+              rxMemory, sizeof(rxMemory),
+              BUFFER_RING, BUFFER_RING);
+```
 
-/**
- * @brief Check string format for float.
- * @return true if succeeded.
- */
-bool isFloat(const char* str);
+The default mode is `BUFFER_LINEAR`. You can choose each direction independently.
 
-/**
- * @brief Check string format for int64.
- * @return true if succeeded.
- */
-bool isInt64(const char* str);
+## Buffer modes and capacity
 
-/**
- * @brief Check string format for int32.
- * @return true if succeeded.
- */
-bool isInt32(const char* str);
+Both modes reserve one byte, so a buffer of `N` bytes can hold at most `N - 1` data bytes. A configured size below 2 has no usable capacity.
 
-/**
- * @brief Check string format for int16.
- * @return true if succeeded.
- */
-bool isInt16(const char* str);
+| Mode | Behavior | When full |
+| --- | --- | --- |
+| `BUFFER_LINEAR` | Data is stored from the beginning of the buffer. Removing bytes shifts remaining data toward the beginning. | A push keeps the newest bytes that fit, dropping older buffered data as needed. The operation reports overflow even if it inserted data. |
+| `BUFFER_RING` | Data is stored in a circular region and can wrap around the end. Removing bytes advances the read position without shifting the rest. | A push that does not fit is rejected and existing data is preserved. |
 
-/**
- * @brief Check string format for int8.
- * @return true if succeeded.
- */
-bool isInt8(const char* str);
+The ring buffer reserves one slot to distinguish full from empty. Neither mode silently grows its memory.
 
-/**
- * @brief Check string format for uint64.
- * @return true if succeeded.
- */
-bool isUInt64(const char* str);
+## Basic use
 
-/**
- * @brief Check string format for uint32.
- * @return true if succeeded.
- */
-bool isUInt32(const char* str);
+```cpp
+const char message[] = "hello";
 
-/**
- * @brief Check string format for uint16.
- * @return true if succeeded.
- */
-bool isUInt16(const char* str);
+if (!stream.pushBackTxBuffer(message, sizeof(message) - 1)) {
+    // Check stream.errorCode; a linear buffer may have accepted only part
+    // of the requested data.
+}
 
-/**
- * @brief Check string format for uint8.
- * @return true if succeeded.
- */
-bool isUInt8(const char* str);
+// A driver or transmit-complete handler can read the queued TX bytes.
+uint32_t queued = stream.availableTx();
 
-/**
- * @brief Convert double value to string with certain precision.
- * @param value: double value.
- * @param precision: number of characters after the decimal point.
- * @return string representation of the double value.
- */
-void decimalToString(double value, uint8_t precision, char* output);
-
-/**
- * @brief Convert float value to string with certain precision.
- * @param value: float value.
- * @param precision: number of characters after the decimal point.
- * @return string representation of the float value.
- */
-void decimalToString(float value, uint8_t precision, char* output);
-
-/**
- * @brief Function to check if all characters in a string are valid numbers.
- * @note - Intiger and decimal numbers are acceptable.
- * 
- * @note - '-' or '+' character at the first of string are acceptable.
- * @return true if succeeded.
- */
-bool isNumber(const char* str);
-
-/**
- * @brief Function to check a string are valid intiger number.
- * @note - '-' or '+' character at the first of string are acceptable.
- * @return true if succeeded.
- */
-bool isIntiger(const char* str);
-
-/**
- * @brief Function to check if a string ends with a given suffix.
- * @return true if succeeded.
- */
-bool endsWith(const char* str, const char* suffix);
-
-/**
- * @brief Convert string to intiger number.
- * @param num is the number for  store intiger value.
- * @return true if str is intiger.
- */
-bool stringToInt32(const char* str, int32_t* num);
-
-/**
- * @brief Convert string to float number.
- * @param num is the number for store float value.
- * @return true if str is float.
- */
-bool stringToFloat(const char* str, float* num);
-
-/**
- * @brief Convert string to double number.
- * @param num is the number for store double value.
- * @return true if str is double.
- */
-bool stringToDouble(const char* str, double* num);
-
+char received[16];
+if (stream.popFrontRxBuffer(received, sizeof(received), 5)) {
+    // Five bytes were copied and removed. Byte output is not automatically
+    // null-terminated; add a terminator yourself if treating it as text.
 }
 ```
-## Public Member Variables For Stream Class
+
+`pushBackTxBuffer()` and `pushBackRxBuffer()` append bytes. `writeTxBuffer()` and `writeRxBuffer()` replace the current contents after validating the input. For example:
 
 ```cpp
-/// @brief Last error code number occurred for the object.
-int8_t errorCode;
+const char command[] = "status";
+if (!stream.writeTxBuffer(command, sizeof(command) - 1)) {
+    // Invalid input or an unconfigured buffer.
+}
 ```
 
-## Public Member Functions For Stream Class
+## Reading, peeking, and searching
 
-```cpp
-/**
- * @brief Constructor. Init some variables and parameters. Init TX/RX buffers.
- * @param txBuffer: Transmit buffer pointer.
- * @param txBufferSize: Transmit buffer size.
- * @param rxBuffer: Recieve buffer pointer.
- * @param rxBufferSize: Recieve buffer size.
- */
-Stream(char* txBuffer = nullptr, size_t txBufferSize = 0, char* rxBuffer = nullptr, size_t rxBufferSize = 0);
+- `availableTx()` / `availableRx()` return the number of queued bytes.
+- `freeTx()` / `freeRx()` return the remaining usable capacity.
+- `peekRx(index)` reads one byte without removing it. It returns `0` when the index is out of range, so use `availableRx()` to distinguish that case from an actual zero byte.
+- `findRx(value)` returns the offset of the first matching byte, or `SIZE_MAX` if it is not present.
+- `copyRxUntil(delimiter, destination, destinationSize)` copies bytes up to and including the delimiter. It returns the copied byte count, or `SIZE_MAX` if the delimiter is missing or the destination is too small. With no queued data it returns `0` and clears a valid destination.
+- `popFrontTxBuffer()` / `popFrontRxBuffer()` copy and remove bytes from the front.
+- `removeFrontTxBuffer()` / `removeFrontRxBuffer()` remove bytes without copying them out.
+- `popAllTxBuffer()` / `popAllRxBuffer()` copy and remove up to the destination's maximum size. If the destination is smaller than the queued data, the remaining bytes stay in the stream.
 
-/**
- * Destructor.
- */
-~Stream();
+Byte-buffer output is not guaranteed to end in `\0`. Treat it as bytes unless you explicitly add a terminator and have reserved space for it.
 
-/**
- * @brief Set transmit buffer.
- * @param txBuffer: Transmit buffer pointer.
- * @param txBufferSize: Transmit buffer size.
- */
-void setTxBuffer(char* txBuffer, size_t txBufferSize);
+## TX and RX ring buffers with interrupts or DMA
 
-/**
- * @brief Set receive buffer.
- * @param rxBuffer: Recieve buffer pointer.
- * @param rxBufferSize: Recieve buffer size.
- */
-void setRxBuffer(char* rxBuffer, size_t rxBufferSize);
+Ring mode avoids shifting data, so it is useful for continuous UART traffic. A common arrangement is one producer and one consumer per direction:
 
-/**
- * @brief Return current TxBuffer size.
- */
-size_t getTxBufferSize();
+- TX: application code queues bytes; the UART/DMA completion path consumes them.
+- RX: the UART receive path queues bytes; application code consumes them.
 
-/**
- * @brief Return currect RxBuffer size.
- */
-size_t getRxBufferSize();
+The implementation includes ordering barriers for supported Cortex toolchains, but this is not a general multi-threaded or multi-producer buffer. Keep one producer and one consumer for a given direction. Do not change buffer configuration or clear a buffer while an interrupt or DMA operation is using it; coordinate those operations in the application.
 
-/**
- * @brief Return TxBuffer pointer.
- */
-const char* getTxBuffer();
+Ring data may occupy two physical regions when it wraps. `txReadPtr()` / `rxReadPtr()` point to the first currently readable byte, and `txContiguousSize()` / `rxContiguousSize()` report how many bytes are contiguous from that pointer. Use `txPeekContiguous(const char*& ptr, uint32_t& length)` to obtain a TX pointer and contiguous length together. A DMA transfer should not be assumed to cover all queued data when the returned region ends at the buffer boundary; consume that region, then request the next one.
 
-/**
- * @brief Return RxBuffer pointer.
- */
-const char* getRxBuffer();
+`getTxBuffer()` and `getRxBuffer()` return the base addresses of the configured memory, not necessarily the first logical byte in ring mode.
 
-/**
- * @brief Clear all data on the TxBuffer.
- */
-void clearTxBuffer();
+## Buffer configuration and clearing
 
-/**
- * @brief Clear all data on the RxBuffer.
- */
-void clearRxBuffer();
+- `setTxBuffer()` / `setRxBuffer()` assign and clear the supplied memory.
+- `setBufferTypes()` changes the TX/RX modes and clears both buffers, discarding queued data.
+- `clearTxBuffer()` / `clearRxBuffer()` discard queued data.
 
-/**
- * @brief Remove front certain number elements from TX buffer and remove them.
- * @return true if succeeded.
- * @note - Error code be 1 if: "Not enough data in the buffer to remove"
- *  */
-bool removeFrontTxBuffer(size_t dataSize = 1);
+Only call these configuration or clear operations when the relevant producer, consumer, interrupt, and DMA activity is stopped or otherwise synchronized.
 
-/**
- * @brief Remove front certain number elements from RX buffer and remove them.
- * @return true if succeeded.
- * @note - Error code be 1 if: "Not enough data in the buffer to remove"
- *  */
-bool removeFrontRxBuffer(size_t dataSize = 1);
+## Errors and partial operations
 
-/**
- * @brief Write data Tx buffer.
- * @note - Clear any previouse data on Tx buffer.
- * @return true if succeeded.
- * @note - Error code be 1 if: "Error Stream: Data size exceeds TX buffer size."
- */
-bool writeTxBuffer(const char* data, size_t dataSize);
+The most recent result is stored in the public `errorCode` field.
 
-/**
- * @brief Write data Rx buffer.
- * @note - Clear any previouse data on Rx buffer.
- * @return true if succeeded.
- * @note - Error code be 1 if: "Error Stream: Data size exceeds RX buffer size."
- */
-bool writeRxBuffer(const char* data, size_t dataSize);
+| Code | Meaning |
+| --- | --- |
+| `STREAM_OK` | Operation completed successfully. |
+| `STREAM_ERR_PARAM` | Invalid pointer, size, configuration, or request. |
+| `STREAM_ERR_OVERFLOW_OR_SHORT` | A push overflowed, or a read requested more bytes than were available. |
+| `STREAM_ERR_SIZE_ZERO` | An operation requiring a nonzero size received zero. |
 
-/**
- * @brief Push back certain number charecter in to TxBuffer.
- * @param data is a char array pointer that you want to push back.
- * @param dataSize is the data length for push back.
- * @return true if succeeded.
- * @note - Error code be 1 if: "Error Stream: data can not be null."
- * @note - Error code be 2 if: "Error Stream: TX Buffer Overflow"
- */
-bool pushBackTxBuffer(const char* data, size_t dataSize = 1);
+Check both the function's return value and `errorCode`. Some failed operations can still have an effect:
 
-/**
- * @brief Push back certain number charecter in to TxBuffer.
- * @param data is a string pointer that you want to push back.
- * @return true if succeeded.
- * @note - Error code be 1 if: "Error Stream: data can not be null."
- * @note - Error code be 2 if: "Error Stream: TX Buffer Overflow"
- */
-bool pushBackTxBuffer(const std::string* data);
+- A linear-buffer push can drop old bytes, insert the newest bytes that fit, and return `false` with `STREAM_ERR_OVERFLOW_OR_SHORT`.
+- A ring-buffer push that cannot fit is rejected; the queued bytes remain unchanged.
+- A pop requesting more bytes than are available copies and removes the available bytes, then returns `false` with `STREAM_ERR_OVERFLOW_OR_SHORT`.
+- A write whose input is larger than the buffer's usable capacity is rejected before replacing the current contents.
+- If a push input itself is larger than the usable capacity, only its last bytes can fit. The operation reports overflow/short status.
 
-/**
- * @brief Push back certain number charecter in to RxBuffer.
- * @param data is a char array pointer that you want to push back.
- * @param dataSize is the data length for push back.
- * @return true if succeeded.
- * @note - Error code be 1 if: "Error Stream: data can not be null."
- * @note - Error code be 2 if: "Error Stream: RX Buffer Overflow"
- */
-bool pushBackRxBuffer(const char* data, size_t dataSize = 1);
+The status describes the most recent operation; another call can replace it.
 
-/**
- * @brief Push back certain number charecter in to RxBuffer.
- * @param data is a string pointer that you want to push back.
- * @return true if succeeded.
- * @note - Error code be 1 if: "Error Stream: data can not be null."
- * @note - Error code be 2 if: "Error Stream: RX Buffer Overflow"
- */
-bool pushBackRxBuffer(const std::string* data);
+## String and numeric helpers
 
-/**
- * @brief Pop front certain number elements from TX buffer and remove them.
- * @param data is the string that poped front.
- * @return true if succeeded.
- * @note - Error code be 1 if: "Error Stream: data can not be null."
- * @note - Error code be 2 if: "Not enough data in the buffer to pop"
- *  */
-bool popFrontTxBuffer(std::string* data, size_t dataSize = 1);
+The header also provides utility functions for fixed-size character buffers:
 
-/**
- * @brief Pop front certain number elements from TX buffer and remove them.
- * @param data is the string that poped front.
- * @return true if succeeded.
- * @note - Error code be 1 if: "Error Stream: data can not be null."
- * @note - Error code be 2 if: "Not enough data in the buffer to pop"
- *  */
-bool popFrontTxBuffer(char* data, size_t dataSize = 1);
+- `safe_strnlen()` measures a string up to a supplied limit.
+- `trimString()` removes leading and trailing whitespace, in place or into a destination buffer.
+- `splitString()` splits at the first delimiter. Optional output sizes must include room for the terminating null byte; it checks the requested outputs before writing either one.
+- `isWhitespaceOnly()` checks whether a string contains only whitespace. An empty string is considered whitespace-only; a null pointer is invalid.
+- `validateRow()` checks a comma-separated row for the expected number of non-empty fields.
+- `endsWith()` checks a suffix.
+- `isBoolean()`, `isNumber()`, `isIntiger()`, `isUintiger()`, and the signed/unsigned integer and floating-point validators check textual values and ranges. The API spelling `isIntiger` is retained for compatibility.
+- `stringToUint8/16/32/64()`, `stringToInt8/16/32/64()`, `stringToFloat()`, and `stringToDouble()` convert validated text.
+- `decimalToString()` formats a `float` or `double` with a requested number of decimal places.
 
-/**
- * @brief Pop front certain number elements from RX buffer and remove them.
- * @param data is the string that poped front.
- * @return true if succeeded.
- * @note - Error code be 1 if: "Error Stream: data can not be null."
- * @note - Error code be 2 if: "Not enough data in the buffer to pop"
- *  */
-bool popFrontRxBuffer(std::string* data, size_t dataSize = 1);
+The numeric text validators accept decimal notation, not exponent notation or surrounding whitespace. `isNumber()` allows an optional leading sign and at most one decimal point, and requires at least one digit. Boolean validation accepts `true`, `TRUE`, `false`, `FALSE`, `1`, and `0`.
 
-/**
- * @brief Pop front certain number elements from RX buffer and remove them.
- * @param data is the string that poped front.
- * @return true if succeeded.
- * @note - Error code be 1 if: "Error Stream: data can not be null."
- * @note - Error code be 2 if: "Not enough data in the buffer to pop"
- *  */
-bool popFrontRxBuffer(char* data, size_t dataSize = 1);
+`splitString()` rejects a null input and a null-character delimiter. If an output buffer is supplied, its size must be large enough for its text and trailing `\0`. A null output pointer means that part is not returned.
 
-/**
- * @brief Pop front all elements from TX buffer and remove them.
- * @param data is the string that poped front.
- * @return true if succeeded.
- * @note - Error code be 1 if: "Error Stream: data can not be null."
- *  */
-bool popAllTxBuffer(std::string* data);
+## Typed values
 
-/**
- * @brief Pop front all elements from TX buffer and remove them.
- * @param data is the string that poped front.
- * @return true if succeeded.
- * @note - Error code be 1 if: "Error Stream: data can not be null."
- *  */
-bool popAllTxBuffer(char* data);
+`dataTypeEnum` describes unsigned and signed integers, `float`, `double`, `char`, `string`, and `bool`. `dataValueUnion` stores the corresponding value. Its `stringValue` can hold up to seven characters plus the null terminator; `stringPointerValue` is a non-owning pointer.
 
-/**
- * @brief Pop front all elements from RX buffer and remove them.
- * @param data is the string that poped front.
- * @return true if succeeded.
- * @note - Error code be 1 if: "Error Stream: data can not be null."
- *  */
-bool popAllRxBuffer(std::string* data);
+- `stringToNumber(text, &value, type)` parses text into the requested type and returns success or failure.
+- `checkValueType()` checks text against a type name or enum value.
+- `dataValueToString()` formats a typed value into a caller-provided character buffer.
+- A `std::string` formatting overload is available on PC builds.
 
-/**
- * @brief Pop front all elements from RX buffer and remove them.
- * @param data is the string that poped front.
- * @return true if succeeded.
- * @note - Error code be 1 if: "Error Stream: data can not be null."
- *  */
-bool popAllRxBuffer(char* data);
+The character-buffer formatting APIs do not take a destination size. The caller must provide enough space for the formatted result and its terminator. `decimalToString()` has the same caller-buffer requirement.
 
-/**
- * @brief Return data length on TxBuffer.
- * @return true if succeeded.
- */
-size_t availableTx();
+## PC builds
 
-/**
- * @brief Return data length on RxBuffer.
- * @return true if succeeded.
- */
-size_t availableRx();
+On Linux and ordinary Windows builds, the header enables PC-only `std::string` overloads for pushing and popping stream data and formatting typed values. These overloads are not enabled for the supported Arm compiler configurations. Embedded code can use the character-buffer overloads on all supported targets.
+
+## Host regression test
+
+The repository contains a standalone regression test in `tests/stream_regression.cpp`. From the `Libraries/Stream_STM32` directory, build and run it with a C++11 compiler:
+
+```sh
+g++ -std=c++11 -Wall -Wextra src/Stream.cpp tests/stream_regression.cpp -o stream_regression
+./stream_regression
 ```
+
+The generated executable is a local build artifact; it is not part of the library.
